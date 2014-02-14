@@ -4,11 +4,37 @@ namespace RefCheck
 {
   public class Reference : IEqualityComparer<Reference>
   {
-    public bool IsPresent { get; set; }
-    public bool IsWhitelisted { get; set; }
-    public bool IsBlacklisted { get; set; }
+      private bool isWhitelisted;
+      private bool isBlacklisted;
+      public bool IsPresent { get; set; }
 
-    public string Name { get; set; }
+      public bool IsWhitelisted
+      {
+          get { return isWhitelisted; }
+          set
+          {
+              isWhitelisted = value;
+              if (isWhitelisted)
+              {
+                  isBlacklisted = false;
+              }
+          }
+      }
+
+      public bool IsBlacklisted
+      {
+          get { return isBlacklisted; }
+          set
+          {
+              isBlacklisted = value;
+              if (isBlacklisted)
+              {
+                  isWhitelisted = false;
+              }
+          }
+      }
+
+      public string Name { get; set; }
     public string Version { get; set; }
     public string Culture { get; set; }
     public string PublicKeyToken { get; set; }

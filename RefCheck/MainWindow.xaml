@@ -3,16 +3,19 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:refCheck="clr-namespace:RefCheck"
         Title="Reference Checker" Height="600" Width="800" Icon="RefCheck_16x16.png">
-  <Window.DataContext>
-    <refCheck:MainViewModel />
-  </Window.DataContext>
-  <Grid>
-    <Label Content="{Binding SolutionName}" Margin="10,10,233,0" VerticalAlignment="Top" FontWeight="Bold"/>
-    <Button Content="Open..." Margin="0,12,10,0" VerticalAlignment="Top" Command="{Binding OpenProject, Mode=OneWay}" HorizontalAlignment="Right" Width="75"/>
-    <DataGrid Margin="10,41,10,37" ItemsSource="{Binding References}"/>
-    <Button Content="Save" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="75" Command="{Binding SaveList}" />
-    <Button Content="Whitelist all present" HorizontalAlignment="Left" Margin="10,0,0,10" VerticalAlignment="Bottom" Width="150" Command="{Binding WhitelistPresent}" />
-    <ProgressBar Height="64" Margin="10,41,10,0" VerticalAlignment="Top" IsIndeterminate="True" Visibility="{Binding ShowChecking}"/>
+    <Window.DataContext>
+        <refCheck:MainViewModel />
+    </Window.DataContext>
+    <Grid>
+        <Label Content="{Binding SolutionName}" Margin="10,10,233,0" VerticalAlignment="Top" FontWeight="Bold"/>
+        <ProgressBar Height="32" Margin="32,260,32,0" VerticalAlignment="Top" IsIndeterminate="True" Visibility="{Binding ShowChecking}"/>
+        <Button Content="Open..." Margin="0,12,10,0" VerticalAlignment="Top" Command="{Binding OpenProject, Mode=OneWay}" HorizontalAlignment="Right" Width="75"/>
 
-  </Grid>
+        <Grid Visibility="{Binding SolutionReady}">
+            <DataGrid Margin="10,41,10,37" ItemsSource="{Binding References}" />
+            <Button Content="Save" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="75" Command="{Binding SaveList}" />
+            <Button Content="Whitelist all present" HorizontalAlignment="Left" Margin="10,0,0,10" VerticalAlignment="Bottom" Width="150" Command="{Binding WhitelistPresent}" />
+        </Grid>
+
+    </Grid>
 </Window>
