@@ -2,7 +2,6 @@
 using System.ComponentModel;
 using System.Linq;
 using System.Windows;
-using System.Windows.Markup;
 using IctBaden.Presentation;
 using Microsoft.Win32;
 
@@ -13,8 +12,8 @@ namespace RefCheck
         public List<Reference> References { get; set; }
         public bool IsChecking { get; set; }
 
-        public Visibility ShowChecking { get { return IsChecking ? Visibility.Visible : Visibility.Hidden; } }
-        public Visibility SolutionReady { get { return (solution.IsLoaded && !IsChecking) ? Visibility.Visible : Visibility.Hidden; } }
+        public Visibility ShowChecking => IsChecking ? Visibility.Visible : Visibility.Hidden;
+        public Visibility SolutionReady => IsInDesignMode || (solution.IsLoaded && !IsChecking) ? Visibility.Visible : Visibility.Hidden;
 
         private Solution solution;
         private ReferenceChecker checker;
@@ -64,10 +63,10 @@ namespace RefCheck
 
         private void UpdateReferences()
         {
-            References = solution.Projects.SelectMany(p => p.References).AsEnumerable()
-                //.Distinct(new Reference())
-              .OrderBy(r => r.ToString())
-              .ToList();
+            References = solution.Projects
+                .SelectMany(p => p.References).AsEnumerable()
+                .OrderBy(r => r.ToString())
+                .ToList();
 
             NotifyPropertyChanged("References");
         }
@@ -75,10 +74,7 @@ namespace RefCheck
         [ActionMethod]
         public void SaveList()
         {
-            if (checker == null)
-                return;
-
-            checker.Save();
+            checker?.Save();
         }
 
         [ActionMethod]

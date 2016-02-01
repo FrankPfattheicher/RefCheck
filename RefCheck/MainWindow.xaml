@@ -7,12 +7,23 @@
         <refCheck:MainViewModel />
     </Window.DataContext>
     <Grid>
-        <Label Content="{Binding SolutionName}" Margin="10,10,233,0" VerticalAlignment="Top" FontWeight="Bold"/>
+        <Button Margin="10,12,10,0" VerticalAlignment="Top" Command="{Binding OpenProject, Mode=OneWay}" Height="32" HorizontalContentAlignment="Stretch">
+            <TextBlock Text="{Binding SolutionDisplayText}" Margin="10,0,6.333,0" ></TextBlock>
+        </Button>
         <ProgressBar Height="32" Margin="32,260,32,0" VerticalAlignment="Top" IsIndeterminate="True" Visibility="{Binding ShowChecking}"/>
-        <Button Content="Open..." Margin="0,12,10,0" VerticalAlignment="Top" Command="{Binding OpenProject, Mode=OneWay}" HorizontalAlignment="Right" Width="75"/>
 
         <Grid Visibility="{Binding SolutionReady}">
-            <DataGrid Margin="10,41,10,37" ItemsSource="{Binding References}" />
+            <DataGrid Margin="10,41,10,37" ItemsSource="{Binding References}" AutoGeneratingColumn="DataGrid_OnAutoGeneratingColumn" >
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                                <Setter Property="Background" Value="Yellow"></Setter>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.RowStyle>
+            </DataGrid>
             <Button Content="Save" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="75" Command="{Binding SaveList}" />
             <Button Content="Whitelist all present" HorizontalAlignment="Left" Margin="10,0,0,10" VerticalAlignment="Bottom" Width="150" Command="{Binding WhitelistPresent}" />
         </Grid>

@@ -11,7 +11,9 @@ namespace RefCheck
 
         public List<Project> Projects { get; private set; }
 
-        public bool IsLoaded { get { return Projects.Count > 0; } }
+        public bool IsLoaded => Projects.Count > 0;
+
+        public string DisplayText => IsLoaded ? $"{Name} ({Projects.Count} Projects)" : Name;
 
         public Solution()
         {
@@ -36,12 +38,12 @@ namespace RefCheck
             var format = lines.FirstOrDefault(line => line.StartsWith("Microsoft Visual Studio Solution File"));
             if (format != null)
             {
-                solution.FormatVersion = format.Split(new[] { ',' })[1].Trim();
+                solution.FormatVersion = format.Split(',')[1].Trim();
             }
 
-            var projectFiles = lines.Where(line => line.StartsWith("Project")).Select(line => line.Split(new[] { ',' })[1].Trim());
+            var projectFiles = lines.Where(line => line.StartsWith("Project")).Select(line => line.Split(',')[1].Trim());
 
-            var path = Path.GetDirectoryName(fileName);
+            var path = Path.GetDirectoryName(fileName) ?? ".";
             projectFiles = projectFiles.Select(name => Path.GetFullPath(Path.Combine(path, name.Substring(1, name.Length - 2))));
 
             solution.Projects = projectFiles.Select(Project.Load).ToList();
