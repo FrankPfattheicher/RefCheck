@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Linq;
 using System.Windows;
+using System.Windows.Markup;
 using IctBaden.Presentation;
 using Microsoft.Win32;
 
@@ -9,11 +10,15 @@ namespace RefCheck
 {
     public class MainViewModel : ActiveViewModel
     {
-        public List<Reference> References { get; set; }
-        public bool IsChecking { get; set; }
+        public List<Reference> References { get; private set; }
+        public bool IsChecking { get; private set; }
 
         public Visibility ShowChecking => IsChecking ? Visibility.Visible : Visibility.Hidden;
         public Visibility SolutionReady => IsInDesignMode || (solution.IsLoaded && !IsChecking) ? Visibility.Visible : Visibility.Hidden;
+
+        public string CheckResult { get; private set; }
+        [DependsOn(nameof(CheckResult))]
+        public Visibility ShowResult => string.IsNullOrEmpty(CheckResult) ? Visibility.Collapsed : Visibility.Visible;
 
         private Solution solution;
         private ReferenceChecker checker;
@@ -39,7 +44,8 @@ namespace RefCheck
                 return;
 
             IsChecking = true;
-            NotifyPropertiesChanged(new[] { "ShowChecking", "SolutionReady" });
+            CheckResult = null;
+            NotifyPropertiesChanged(new[] { nameof(ShowChecking), nameof(SolutionReady), nameof(CheckResult) });
 
             worker = new BackgroundWorker();
             worker.DoWork += (sender, args) =>
@@ -55,8 +61,16 @@ namespace RefCheck
             worker.RunWorkerCompleted += (sender, args) =>
             {
                 UpdateReferences();
+                if (solution.Warnings == 1)
+                {
+                    CheckResult = "1 Warning";
+                }
+                else if (solution.Warnings > 1)
+                {
+                    CheckResult = $"{solution.Warnings} Warnings";
+                }
                 IsChecking = false;
-                NotifyPropertiesChanged(new[] { "ShowChecking", "SolutionReady", "References" });
+                NotifyPropertiesChanged(new[] { nameof(ShowChecking), nameof(SolutionReady), nameof(References), nameof(CheckResult) });
             };
             worker.RunWorkerAsync();
         }

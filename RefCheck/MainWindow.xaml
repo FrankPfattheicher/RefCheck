@@ -6,14 +6,20 @@
     <Window.DataContext>
         <refCheck:MainViewModel />
     </Window.DataContext>
-    <Grid>
-        <Button Margin="10,12,10,0" VerticalAlignment="Top" Command="{Binding OpenProject, Mode=OneWay}" Height="32" HorizontalContentAlignment="Stretch">
-            <TextBlock Text="{Binding SolutionDisplayText}" Margin="10,0,6.333,0" ></TextBlock>
+    <DockPanel>
+        <Button DockPanel.Dock="Top" VerticalAlignment="Top" Command="{Binding OpenProject, Mode=OneWay}" Height="32" HorizontalContentAlignment="Stretch">
+            <TextBlock Text="{Binding SolutionDisplayText}" Margin="10,0,10,0" ></TextBlock>
         </Button>
+
+        <Grid DockPanel.Dock="Bottom" Visibility="{Binding ShowResult}" Background="Orange" >
+            <TextBlock Text="{Binding CheckResult}" Margin="10,10,10,10" ></TextBlock>
+        </Grid>
+        
+    <Grid>
         <ProgressBar Height="32" Margin="32,260,32,0" VerticalAlignment="Top" IsIndeterminate="True" Visibility="{Binding ShowChecking}"/>
 
         <Grid Visibility="{Binding SolutionReady}">
-            <DataGrid Margin="10,41,10,37" ItemsSource="{Binding References}" AutoGeneratingColumn="DataGrid_OnAutoGeneratingColumn" >
+            <DataGrid Margin="10,10,10.333,36.667" ItemsSource="{Binding References}" AutoGeneratingColumn="DataGrid_OnAutoGeneratingColumn" >
                 <DataGrid.RowStyle>
                     <Style TargetType="DataGridRow">
                         <Style.Triggers>
@@ -27,6 +33,7 @@
             <Button Content="Save" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="75" Command="{Binding SaveList}" />
             <Button Content="Whitelist all present" HorizontalAlignment="Left" Margin="10,0,0,10" VerticalAlignment="Bottom" Width="150" Command="{Binding WhitelistPresent}" />
         </Grid>
-
     </Grid>
+        
+    </DockPanel>
 </Window>

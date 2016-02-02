@@ -15,6 +15,9 @@ namespace RefCheck
 
         public string DisplayText => IsLoaded ? $"{Name} ({Projects.Count} Projects)" : Name;
 
+        public int Warnings { get; set; }
+        public int Errors { get; set; }
+
         public Solution()
         {
             Projects = new List<Project>();

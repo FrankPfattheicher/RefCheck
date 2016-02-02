@@ -63,7 +63,7 @@ namespace RefCheck
             CheckForWarnings();
         }
 
-        private void CheckForWarnings()
+        public void CheckForWarnings()
         {
             var references = solution.Projects
                 .SelectMany(p => p.References).AsEnumerable()
@@ -77,13 +77,18 @@ namespace RefCheck
 
             var warningRefs = refGroups.Select(g => g.GroupBy(r => r.SourceId).ToList())
                 .Where(rg => rg.Count > 1)
+                .ToList();
+
+            solution.Warnings += warningRefs.Count;
+
+            var referenced = warningRefs
                 .SelectMany(g => g.AsEnumerable())
                 .Select(g => g.Key)
                 .ToList();
 
             foreach (var reference in references)
             {
-                reference.IsWarning = warningRefs.Contains(reference.SourceId);
+                reference.IsWarning = referenced.Contains(reference.SourceId);
             }
         }
 
