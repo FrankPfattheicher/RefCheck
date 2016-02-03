@@ -4,6 +4,8 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Markup;
 using IctBaden.Presentation;
+using IctBaden.Presentation.Dialogs;
+using IctBaden.Presentation.Menus;
 using Microsoft.Win32;
 
 namespace RefCheck
@@ -28,6 +30,15 @@ namespace RefCheck
         {
             solution = Solution.Load("Open solution file...");
             SetModel("Solution", solution);
+        }
+
+        public override void OnViewLoaded()
+        {
+            SystemMenu.AppendEntries(new List<SystemMenuEntry>
+            {
+                new SystemMenuEntry("-", null),
+                new SystemMenuEntry("About RefCheck...", AboutDialog.ShowAboutDialog)
+            });
         }
 
         [ActionMethod]

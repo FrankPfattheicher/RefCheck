@@ -7,7 +7,7 @@
         <refCheck:MainViewModel />
     </Window.DataContext>
     <DockPanel>
-        <Button DockPanel.Dock="Top" VerticalAlignment="Top" Command="{Binding OpenProject, Mode=OneWay}" Height="32" HorizontalContentAlignment="Stretch">
+        <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" DockPanel.Dock="Top" VerticalAlignment="Top" Command="{Binding OpenProject, Mode=OneWay}" Height="32" HorizontalContentAlignment="Stretch" HorizontalAlignment="Stretch">
             <TextBlock Text="{Binding SolutionDisplayText}" Margin="10,0,10,0" ></TextBlock>
         </Button>
 
