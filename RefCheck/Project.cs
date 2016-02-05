@@ -4,12 +4,15 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Xml;
+using IctBaden.Framework.FileSystem;
 
 namespace RefCheck
 {
     public class Project
     {
+        public string SolutionName { get; private set; }
         public string Name { get; private set; }
+        public string RelativeName => FileSystemNaming.GetRelativePath(Path.GetDirectoryName(SolutionName), Name);
 
         public List<Reference> References;
 
@@ -18,29 +21,29 @@ namespace RefCheck
             return Name;
         }
 
-        public Project()
+        private Project()
         {
             References = new List<Reference>();
         }
 
-        public static Project Load(string fileName)
+        public static Project Load(string solutionFileName, string projectFileName)
         {
-            var project = new Project { Name = fileName };
+            var project = new Project { SolutionName = solutionFileName, Name = projectFileName };
 
-            if (!File.Exists(fileName))
+            if (!File.Exists(projectFileName))
                 return project;
 
             var xml = new XmlDocument();
-            xml.Load(fileName);
+            xml.Load(projectFileName);
 
-            var projectName = Path.GetFileNameWithoutExtension(fileName);
-            var path = Path.GetDirectoryName(fileName) ?? ".";
+            var projectName = Path.GetFileNameWithoutExtension(projectFileName);
+            var path = Path.GetDirectoryName(projectFileName) ?? ".";
 
             // ReSharper disable once PossibleNullReferenceException
-            var references =
-              xml
+            var references = xml
               .SelectNodes("//*[local-name()='Project']/*[local-name()='ItemGroup']/*[local-name()='Reference']")
               .GetEnumerator();
+
             while ((references != null) && references.MoveNext())
             {
                 var reference = (XmlNode)references.Current;

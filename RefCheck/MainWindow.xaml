@@ -16,7 +16,9 @@
         </Grid>
         
     <Grid>
-        <ProgressBar Height="32" Margin="32,260,32,0" VerticalAlignment="Top" IsIndeterminate="True" Visibility="{Binding ShowChecking}"/>
+            <TextBlock Panel.ZIndex="100" Height="32" Margin="32,196,29.333,0" VerticalAlignment="Top" TextAlignment="Center" Visibility="{Binding ShowChecking}" Text="{Binding CheckSolution}" FontWeight="Bold"/>
+            <TextBlock Panel.ZIndex="100" Height="32" Margin="32,228,31.333,0" VerticalAlignment="Top" TextAlignment="Center" Visibility="{Binding ShowChecking}" Text="{Binding CheckProgress}"></TextBlock>
+            <ProgressBar Panel.ZIndex="100" Height="32" Margin="32,260,32,0" VerticalAlignment="Top" IsIndeterminate="True" Visibility="{Binding ShowChecking}"/>
 
         <Grid Visibility="{Binding SolutionReady}">
             <DataGrid Margin="10,10,10.333,36.667" ItemsSource="{Binding References}" AutoGeneratingColumn="DataGrid_OnAutoGeneratingColumn" >
@@ -33,7 +35,7 @@
             <Button Content="Save" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="75" Command="{Binding SaveList}" />
             <Button Content="Whitelist all present" HorizontalAlignment="Left" Margin="10,0,0,10" VerticalAlignment="Bottom" Width="150" Command="{Binding WhitelistPresent}" />
         </Grid>
-    </Grid>
+        </Grid>
         
     </DockPanel>
 </Window>

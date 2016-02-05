@@ -15,12 +15,14 @@ namespace RefCheck
 
         public string DisplayText => IsLoaded ? $"{Name} ({Projects.Count} Projects)" : Name;
 
-        public int Warnings { get; set; }
-        public int Errors { get; set; }
+        public List<string> Errors { get; set; }
+        public List<string> Warnings { get; set; }
 
         public Solution()
         {
             Projects = new List<Project>();
+            Errors = new List<string>();
+            Warnings = new List<string>();
         }
 
         public static Solution Load(string fileName)
@@ -49,8 +51,10 @@ namespace RefCheck
             var path = Path.GetDirectoryName(fileName) ?? ".";
             projectFiles = projectFiles.Select(name => Path.GetFullPath(Path.Combine(path, name.Substring(1, name.Length - 2))));
 
-            solution.Projects = projectFiles.Select(Project.Load).ToList();
-
+            solution.Projects = projectFiles.Where(File.Exists)
+                .Select(pn => Project.Load(solution.Name, pn))
+                .ToList();
+            
             return solution;
         }
 

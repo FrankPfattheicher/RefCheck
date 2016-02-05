@@ -13,6 +13,13 @@ namespace RefCheck
         private readonly Solution solution;
         private readonly Profile refList;
         private readonly Dictionary<string, string> frameworkAssemblies;
+        private bool checkDone;
+
+        public readonly List<Reference> References;
+
+        public event Action<string> Processing;
+        public event Action<string> Error;
+        public event Action<string> Warning;
 
         public ReferenceChecker(Solution solution)
         {
@@ -38,6 +45,11 @@ namespace RefCheck
             frameworkAssemblies = new Dictionary<string, string>();
             AddFrameworkDlls(frameworkDir);
             AddFrameworkDlls(visualStudioCommonDir);
+
+            References = solution.Projects
+                                .SelectMany(p => p.References).AsEnumerable()
+                                .OrderBy(r => r.ToString())
+                                .ToList();
         }
 
         private void AddFrameworkDlls(string path)
@@ -60,50 +72,26 @@ namespace RefCheck
                 Check(project);
             }
 
-            CheckForWarnings();
+            CheckForMixedReferences();
+            CheckForBlacklistedReferences();
+
+            checkDone = true;
         }
 
-        public void CheckForWarnings()
+        private void Check(Project project)
         {
-            var references = solution.Projects
-                .SelectMany(p => p.References).AsEnumerable()
-                .OrderBy(r => r.ToString())
-                .ToList();
+            Processing?.Invoke(project.RelativeName);
 
-            var refGroups = references.GroupBy(r => r.RefId)
-                .Select(g => g.AsQueryable().ToList())
-                .Where(rl => rl.Count > 1)
-                .ToList();
-
-            var warningRefs = refGroups.Select(g => g.GroupBy(r => r.SourceId).ToList())
-                .Where(rg => rg.Count > 1)
-                .ToList();
-
-            solution.Warnings += warningRefs.Count;
-
-            var referenced = warningRefs
-                .SelectMany(g => g.AsEnumerable())
-                .Select(g => g.Key)
-                .ToList();
-
-            foreach (var reference in references)
-            {
-                reference.IsWarning = referenced.Contains(reference.SourceId);
-            }
-        }
-
-        public void Check(Project project)
-        {
             foreach (var reference in project.References)
             {
                 Check(reference);
             }
         }
-        public void Check(Reference reference)
+
+        private void Check(Reference reference)
         {
-            var listed = refList["List"].Get(reference.IniKey, 0);
-            reference.IsWhitelisted = (listed == 1);
-            reference.IsBlacklisted = (listed == 2);
+            reference.IsWhitelisted = refList["Whitelisted"].Get(reference.IniKey, false);
+            reference.IsBlacklisted = refList["Blacklisted"].Get(reference.IniKey, false);
 
             if (!string.IsNullOrEmpty(reference.SourcePath))
             {
@@ -126,18 +114,114 @@ namespace RefCheck
             }
         }
 
+        private void CheckForMixedReferences()
+        {
+            Processing?.Invoke("Check for mixed references...");
+
+            var refGroups = References.GroupBy(r => r.RefId)
+                .Select(g => g.AsQueryable().ToList())
+                .Where(rl => rl.Count > 1)
+                .ToList();
+
+            var warningRefs = refGroups.Select(g => g.GroupBy(r => r.SourceId).ToList())
+                .Where(rg => rg.Count > 1)
+                .ToList();
+
+            foreach (var warningRef in warningRefs)
+            {
+                var wref = warningRef.First().AsEnumerable().First();
+                var versions = string.Join(" <-> ",
+                    warningRef.SelectMany(w => w.AsEnumerable())
+                    .Select(r => r.SourceVersion).Distinct()
+                    );
+
+                var warning = $"{wref.Name} {wref.Version}, used: {versions}";
+                solution.Warnings.Add(warning);
+                Warning?.Invoke(warning);
+            }
+
+            var referenced = warningRefs
+                .SelectMany(g => g.AsEnumerable())
+                .Select(g => g.Key)
+                .ToList();
+
+            foreach (var reference in References)
+            {
+                reference.IsWarning = referenced.Contains(reference.SourceId);
+            }
+        }
+
+        public void CheckForBlacklistedReferences()
+        {
+            Processing?.Invoke("Check for blacklisted references...");
+
+            foreach (var reference in References.Where(r => !r.IsWhitelisted))
+            {
+                if (reference.IsBlacklisted)
+                {
+                    var error = $"Blacklisted: {reference.Name} {reference.Version}";
+                    if (!solution.Errors.Contains(error))
+                    {
+                        solution.Errors.Add(error);
+                        Error?.Invoke(error);
+                    }
+                }
+            }
+        }
+
+        public string CheckResult
+        {
+            get
+            {
+                if (!checkDone) return null;
+
+                var result = string.Empty;
+                switch (solution.Errors.Count)
+                {
+                    case 0:
+                        result += "No errors";
+                        break;
+                    case 1:
+                        result += "1 error";
+                        break;
+                    default:
+                        result += $"{solution.Errors.Count} errors";
+                        break;
+                }
+                result += ", ";
+                switch (solution.Warnings.Count)
+                {
+                    case 0:
+                        result += "no warnings";
+                        break;
+                    case 1:
+                        result += "1 warning";
+                        break;
+                    default:
+                        result += $"{solution.Warnings.Count} warnings";
+                        break;
+                }
+
+                return result;
+            }
+        }
+
         public void Save()
         {
             foreach (var project in solution.Projects)
             {
                 foreach (var reference in project.References)
                 {
-                    var saved = refList["List"].Get(reference.IniKey, 0);
-                    var listed = reference.IsWhitelisted ? 1 : reference.IsBlacklisted ? 2 : 0;
+                    var isWhitelisted = refList["Whitelisted"].Get(reference.IniKey, false);
+                    var isBlacklisted = refList["Blacklisted"].Get(reference.IniKey, false);
 
-                    if (listed != saved)
+                    if (reference.IsWhitelisted != isWhitelisted)
                     {
-                        refList["List"].Set(reference.IniKey, listed);
+                        refList["Whitelisted"].Set(reference.IniKey, reference.IsWhitelisted);
+                    }
+                    if (reference.IsBlacklisted != isBlacklisted)
+                    {
+                        refList["Blacklisted"].Set(reference.IniKey, reference.IsBlacklisted);
                     }
                 }
             }

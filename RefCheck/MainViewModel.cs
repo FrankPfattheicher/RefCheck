@@ -1,10 +1,11 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading;
 using System.Windows;
 using System.Windows.Markup;
+using System.Windows.Threading;
 using IctBaden.Presentation;
-using IctBaden.Presentation.Dialogs;
 using IctBaden.Presentation.Menus;
 using Microsoft.Win32;
 
@@ -15,10 +16,17 @@ namespace RefCheck
         public List<Reference> References { get; private set; }
         public bool IsChecking { get; private set; }
 
-        public Visibility ShowChecking => IsChecking ? Visibility.Visible : Visibility.Hidden;
+        public Visibility ShowChecking => IsInDesignMode || IsChecking ? Visibility.Visible : Visibility.Hidden;
         public Visibility SolutionReady => IsInDesignMode || (solution.IsLoaded && !IsChecking) ? Visibility.Visible : Visibility.Hidden;
 
-        public string CheckResult { get; private set; }
+
+        [DependsOn(nameof(CheckProgress))]
+        public string CheckSolution { get; private set; }
+        // ReSharper disable once UnusedAutoPropertyAccessor.Local
+        public string CheckProgress { get; private set; }
+
+        public string CheckResult => checker.CheckResult;
+
         [DependsOn(nameof(CheckResult))]
         public Visibility ShowResult => string.IsNullOrEmpty(CheckResult) ? Visibility.Collapsed : Visibility.Visible;
 
@@ -28,17 +36,15 @@ namespace RefCheck
 
         public MainViewModel()
         {
+            BindingPriority = DispatcherPriority.Send;
             solution = Solution.Load("Open solution file...");
+            checker = new ReferenceChecker(solution);
             SetModel("Solution", solution);
         }
 
         public override void OnViewLoaded()
         {
-            SystemMenu.AppendEntries(new List<SystemMenuEntry>
-            {
-                new SystemMenuEntry("-", null),
-                new SystemMenuEntry("About RefCheck...", AboutDialog.ShowAboutDialog)
-            });
+            SystemMenu.AppendDefaultAboutMenuEntry();
         }
 
         [ActionMethod]
@@ -55,8 +61,7 @@ namespace RefCheck
                 return;
 
             IsChecking = true;
-            CheckResult = null;
-            NotifyPropertiesChanged(new[] { nameof(ShowChecking), nameof(SolutionReady), nameof(CheckResult) });
+            NotifyPropertiesChanged(new[] { nameof(ShowChecking), nameof(SolutionReady) });
 
             worker = new BackgroundWorker();
             worker.DoWork += (sender, args) =>
@@ -64,22 +69,20 @@ namespace RefCheck
                 References = new List<Reference>();
 
                 solution = Solution.Load(dlg.FileName);
+                CheckSolution = solution.Name;
                 SetModel("Solution", solution);
 
                 checker = new ReferenceChecker(solution);
+                checker.Processing += projectName =>
+                {
+                    this[nameof(CheckProgress)] = projectName;
+                    Thread.Sleep(100);
+                };
                 checker.Check();
             };
             worker.RunWorkerCompleted += (sender, args) =>
             {
                 UpdateReferences();
-                if (solution.Warnings == 1)
-                {
-                    CheckResult = "1 Warning";
-                }
-                else if (solution.Warnings > 1)
-                {
-                    CheckResult = $"{solution.Warnings} Warnings";
-                }
                 IsChecking = false;
                 NotifyPropertiesChanged(new[] { nameof(ShowChecking), nameof(SolutionReady), nameof(References), nameof(CheckResult) });
             };
