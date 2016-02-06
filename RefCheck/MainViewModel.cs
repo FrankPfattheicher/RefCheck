@@ -37,7 +37,7 @@ namespace RefCheck
         public MainViewModel()
         {
             BindingPriority = DispatcherPriority.Send;
-            solution = Solution.Load("Open solution file...");
+            solution = new Solution("Click here to open solution file...");
             checker = new ReferenceChecker(solution);
             SetModel("Solution", solution);
         }
@@ -68,7 +68,8 @@ namespace RefCheck
             {
                 References = new List<Reference>();
 
-                solution = Solution.Load(dlg.FileName);
+                solution = new Solution();
+                solution.Load(dlg.FileName);
                 CheckSolution = solution.Name;
                 SetModel("Solution", solution);
 

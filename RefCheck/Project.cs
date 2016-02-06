@@ -12,7 +12,7 @@ namespace RefCheck
     {
         public string SolutionName { get; private set; }
         public string Name { get; private set; }
-        public string RelativeName => FileSystemNaming.GetRelativePath(Path.GetDirectoryName(SolutionName), Name);
+        public string RelativeName => FileSystemNaming.GetRelativePath(Path.GetDirectoryName(Path.GetFullPath(SolutionName)), Name);
 
         public List<Reference> References;
 

@@ -72,8 +72,11 @@ namespace RefCheck
                 Check(project);
             }
 
-            CheckForMixedReferences();
-            CheckForBlacklistedReferences();
+            if (References.Count > 0)
+            {
+                CheckForMixedReferences();
+                CheckForBlacklistedReferences();
+            }
 
             checkDone = true;
         }

@@ -71,6 +71,7 @@ namespace RefCheck
         private static ReturnCode ConsoleMain(string[] args)
         {
             Console.WriteLine(@"RefCheck");
+            var defaultColor = Console.ForegroundColor;
 
             var fileName = args[0];
             if (!File.Exists(fileName))
@@ -80,14 +81,19 @@ namespace RefCheck
                 return ReturnCode.Fatal;
             }
 
-            var solution = Solution.Load(fileName);
+            var solution = new Solution();
+            solution.Load(fileName);
             Console.WriteLine(@"Solution: " + solution.Name);
+            foreach (var error in solution.Errors)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(@"Error: " + error);
+            }
+
             Console.WriteLine($"Checking {solution.Projects.Count} projects.");
 
             var checker = new ReferenceChecker(solution);
             Console.WriteLine($"Checking {checker.References.Count} references.");
-
-            var defaultColor = Console.ForegroundColor;
 
             checker.Processing += projectName =>
             {
