@@ -1,5 +1,5 @@
 RefCheck
-========
+=========
 A checker for VisualStudio solution project references.
 
 Working on large VisualStudio solutions with lots of projects can lead to a mess of external references.
@@ -15,6 +15,7 @@ Executing without commandline parameters starts an UI that allows an interactive
 Running with a solution filename as parameter is used within batch builds as commandline utility.
 
 The sample project
+-------------------
 contains NO CODE but just some projects to show how the references mess up.
 
 There is console application and three library projects.
@@ -26,6 +27,11 @@ During this time the revision of the Newtonsoft.Json library changed from 6.0.1 
 The developer simply adds the nuget reference with the current version as he set up the library project.
 
 Now the result is a solution wide difference in the effecive refernce to Newtonsoft.Json.
+
+Depending on the build output folder the result may vary.
+(1) Same output folder for all projects in solution => the reference of the last modified library is used.
+or
+(2) The first in the main application referenced library's reference is used.
 
 The interactve view of RefCheck shows this like this.
 ![RefCheck interactive](https://github.com/FrankPfattheicher/RefCheck/blob/master/doc/RefCheck1.png)
