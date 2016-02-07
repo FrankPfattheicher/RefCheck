@@ -28,10 +28,14 @@ The developer simply adds the nuget reference with the current version as he set
 Now the result is a solution wide difference in the effecive refernce to Newtonsoft.Json.
 
 The interactve view of RefCheck shows this like this.
-
+![RefCheck interactive](https://github.com/FrankPfattheicher/RefCheck/blob/master/doc/RefCheck1.png)
 
 As you see, all three libraries has a reference to Newtonsoft.Json 6.0.0.0
 but looking in detail every library effectively includes a different version of it.
+![RefCheck interactive](https://github.com/FrankPfattheicher/RefCheck/blob/master/doc/RefCheck2.png)
 
+Using RefChack as a commandline utility ti shows the following result.
+![RefCheck interactive](https://github.com/FrankPfattheicher/RefCheck/blob/master/doc/RefCheck3.png)
 
+The warning is returned as ERRORLEVEL 1.
 
