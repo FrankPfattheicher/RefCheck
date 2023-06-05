@@ -6,231 +6,335 @@ using System.Linq;
 using IctBaden.Framework.IniFile;
 using Microsoft.Win32;
 
-namespace RefCheck
+namespace RefCheck;
+
+public class ReferenceChecker
 {
-    public class ReferenceChecker
+    private readonly Solution _solution;
+    private readonly Profile _refList;
+    private readonly Dictionary<string, string> _frameworkAssemblies = new();
+    private bool _checkDone;
+
+    public readonly List<Project> Projects = new();
+    private readonly List<NugetPackage> _nugetReferences = new();
+
+    public event Action<string>? Processing;
+    public event Action<string>? Error;
+    public event Action<string>? Warning;
+
+    public ReferenceChecker(Solution solution)
     {
-        private readonly Solution solution;
-        private readonly Profile refList;
-        private readonly Dictionary<string, string> frameworkAssemblies;
-        private bool checkDone;
+        _solution = solution;
+        _refList = new Profile(Path.ChangeExtension(solution.Name, "references"));
 
-        public readonly List<Reference> References;
-
-        public event Action<string> Processing;
-        public event Action<string> Error;
-        public event Action<string> Warning;
-
-        public ReferenceChecker(Solution solution)
+        if (Environment.OSVersion.Platform == PlatformID.Win32NT)
         {
-            this.solution = solution;
-            refList = new Profile(Path.ChangeExtension(solution.Name, "references"));
-
-            var regkey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\.NETFramework", false);
-            if (regkey == null)
+#pragma warning disable CA1416
+            var regKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\.NETFramework", false);
+            if (regKey == null)
                 return;
 
-            var installRoot = regkey.GetValue("InstallRoot").ToString();
-            var frameworkDir = Directory.EnumerateDirectories(installRoot, "v?.*").OrderByDescending(Path.GetFileName).First();
+            var installRoot = regKey.GetValue("InstallRoot", "")?.ToString() ?? "";
+            var frameworkDir = Directory.EnumerateDirectories(installRoot, "v?.*").OrderByDescending(Path.GetFileName)
+                .First();
+            AddFrameworkDlls(frameworkDir);
 
             var visualStudioToolsDir = Environment.GetEnvironmentVariables()
-              .Cast<DictionaryEntry>()
-              .Where(kv => kv.Key.ToString().StartsWith("VS") && kv.Key.ToString().Contains("COMNTOOLS"))
-              .OrderByDescending(kv => kv.Key)
-              .Select(kv => kv.Value)
-              .First()
-              .ToString();
-            var visualStudioCommonDir = Path.GetDirectoryName(Path.GetDirectoryName(visualStudioToolsDir));
-
-            frameworkAssemblies = new Dictionary<string, string>();
-            AddFrameworkDlls(frameworkDir);
-            AddFrameworkDlls(visualStudioCommonDir);
-
-            References = solution.Projects
-                                .SelectMany(p => p.References).AsEnumerable()
-                                .OrderBy(r => r.ToString())
-                                .ToList();
+                .Cast<DictionaryEntry>()
+                .Where(kv => kv.Key.ToString()!.StartsWith("VS") && kv.Key.ToString()!.Contains("COMNTOOLS"))
+                .OrderByDescending(kv => kv.Key)
+                .Select(kv => kv.Value)
+                .FirstOrDefault()
+                ?.ToString();
+            if (visualStudioToolsDir != null)
+            {
+                var visualStudioCommonDir = Path.GetDirectoryName(Path.GetDirectoryName(visualStudioToolsDir));
+                if(visualStudioCommonDir != null) AddFrameworkDlls(visualStudioCommonDir);
+            }
+#pragma warning restore CA1416
         }
 
-        private void AddFrameworkDlls(string path)
+        Projects = solution.Projects
+            .SelectMany(p => p.ProjectReferences)
+            .OrderBy(r => r.ToString())
+            .ToList();
+
+        _nugetReferences = solution.Projects
+            .SelectMany(p => p.NugetReferences)
+            .OrderBy(r => r.ToString())
+            .ToList();
+    }
+
+    private void AddFrameworkDlls(string path)
+    {
+        var frameworkDlls = Directory.EnumerateFileSystemEntries(path, "*.dll", SearchOption.AllDirectories);
+        foreach (var dll in frameworkDlls)
         {
-            var frameworkDlls = Directory.EnumerateFileSystemEntries(path, "*.dll", SearchOption.AllDirectories);
-            foreach (var dll in frameworkDlls)
-            {
-                var name = Path.GetFileNameWithoutExtension(dll)?.ToLower() ?? "";
-                if (!frameworkAssemblies.ContainsKey(name))
-                {
-                    frameworkAssemblies.Add(name, dll);
-                }
-            }
+            var name = Path.GetFileNameWithoutExtension(dll).ToLower();
+            _frameworkAssemblies.TryAdd(name, dll);
+        }
+    }
+
+    public void Check()
+    {
+        foreach (var project in _solution.Projects)
+        {
+            Check(project);
         }
 
-        public void Check()
+        if (Projects.Count > 0)
         {
-            foreach (var project in solution.Projects)
-            {
-                Check(project);
-            }
-
-            if (References.Count > 0)
-            {
-                CheckForMixedReferences();
-                CheckForBlacklistedReferences();
-            }
-
-            checkDone = true;
+            CheckForMixedProjects();
+            CheckForBlacklistedProjects();
         }
 
-        private void Check(Project project)
+        if (_nugetReferences.Count > 0)
         {
-            Processing?.Invoke(project.RelativeName);
-
-            foreach (var reference in project.References)
-            {
-                Check(reference);
-            }
+            CheckForMixedNugetReferences();
+            CheckForBlacklistedNugetReferences();
         }
 
-        private void Check(Reference reference)
+        _checkDone = true;
+    }
+
+    private void Check(Project project)
+    {
+        Processing?.Invoke(project.RelativeName);
+        foreach (var reference in project.ProjectReferences)
         {
-            reference.IsWhitelisted = refList["Whitelisted"].Get(reference.IniKey, false);
-            reference.IsBlacklisted = refList["Blacklisted"].Get(reference.IniKey, false);
-
-            if (!string.IsNullOrEmpty(reference.SourcePath))
-            {
-                reference.IsPresent = File.Exists(reference.SourcePath);
-                return;
-            }
-
-            if (!frameworkAssemblies.ContainsKey(reference.Name.ToLower()))
-            {
-                reference.IsPresent = false;
-                return;
-            }
-
-            var path = frameworkAssemblies[reference.Name.ToLower()];
-            reference.IsPresent = File.Exists(path);
-
-            if (reference.IsPresent && string.IsNullOrEmpty(reference.SourcePath))
-            {
-                reference.SourcePath = path;
-            }
+            CheckProject(reference);
         }
 
-        private void CheckForMixedReferences()
+        foreach (var nugetReference in project.NugetReferences)
         {
-            Processing?.Invoke("Check for mixed references...");
+            CheckNugetReference(nugetReference);
+        }
+    }
 
-            var refGroups = References.GroupBy(r => r.RefId)
-                .Select(g => g.AsQueryable().ToList())
-                .Where(rl => rl.Count > 1)
-                .ToList();
+    private void CheckProject(Project project)
+    {
+        project.IsWhitelisted = _refList["Whitelisted"].Get(project.IniKey, false);
+        project.IsBlacklisted = _refList["Blacklisted"].Get(project.IniKey, false);
 
-            var warningRefs = refGroups.Select(g => g.GroupBy(r => r.SourceId).ToList())
-                .Where(rg => rg.Count > 1)
-                .ToList();
+        if (!string.IsNullOrEmpty(project.SourcePath))
+        {
+            project.IsPresent = File.Exists(project.SourcePath);
+            return;
+        }
 
-            foreach (var warningRef in warningRefs)
-            {
-                var wref = warningRef.First().AsEnumerable().First();
-                var versions = string.Join(" <-> ",
-                    warningRef.SelectMany(w => w.AsEnumerable())
+        if (!_frameworkAssemblies.ContainsKey(project.ProjectFileName.ToLower()))
+        {
+            project.IsPresent = false;
+            return;
+        }
+
+        var path = _frameworkAssemblies[project.ProjectFileName.ToLower()];
+        project.IsPresent = File.Exists(path);
+
+        if (project.IsPresent && string.IsNullOrEmpty(project.SourcePath))
+        {
+            project.SourcePath = path;
+        }
+    }
+
+    private void CheckNugetReference(NugetPackage nugetPackage)
+    {
+        Processing?.Invoke($"[NUGET] {nugetPackage.Name} {nugetPackage.Version}");
+
+        nugetPackage.IsWhitelisted = _refList["Whitelisted"].Get(nugetPackage.IniKey, false);
+        nugetPackage.IsBlacklisted = _refList["Blacklisted"].Get(nugetPackage.IniKey, false);
+
+        // if (!string.IsNullOrEmpty(nugetPackage.SourcePath))
+        // {
+        //     nugetPackage.IsPresent = File.Exists(nugetPackage.SourcePath);
+        //     return;
+        // }
+
+        if (!_frameworkAssemblies.ContainsKey(nugetPackage.Name.ToLower()))
+        {
+            nugetPackage.IsPresent = false;
+            return;
+        }
+
+        var path = _frameworkAssemblies[nugetPackage.Name.ToLower()];
+        nugetPackage.IsPresent = File.Exists(path);
+
+        // if (nugetPackage.IsPresent && string.IsNullOrEmpty(nugetPackage.SourcePath))
+        // {
+        //     nugetPackage.SourcePath = path;
+        // }
+    }
+
+    private void CheckForMixedProjects()
+    {
+        Processing?.Invoke("Check for mixed project references...");
+
+        var refGroups = Projects.GroupBy(r => r.RefId)
+            .Select(g => g.AsQueryable().ToList())
+            .Where(rl => rl.Count > 1)
+            .ToList();
+
+        var warningRefs = refGroups.Select(g => g.GroupBy(r => r.SourceId).ToList())
+            .Where(rg => rg.Count > 1)
+            .ToList();
+
+        foreach (var warningRef in warningRefs)
+        {
+            var warnRef = warningRef.First().AsEnumerable().First();
+            var versions = string.Join(" <-> ",
+                warningRef.SelectMany(w => w.AsEnumerable())
                     .Select(r => r.SourceVersion).Distinct()
-                    );
+            );
 
-                var warning = $"{wref.Name} {wref.Version}, used: {versions}";
-                solution.Warnings.Add(warning);
-                Warning?.Invoke(warning);
-            }
-
-            var referenced = warningRefs
-                .SelectMany(g => g.AsEnumerable())
-                .Select(g => g.Key)
-                .ToList();
-
-            foreach (var reference in References)
-            {
-                reference.IsWarning = referenced.Contains(reference.SourceId);
-            }
+            var warning = $"{warnRef.ProjectFileName} {warnRef.Version}, used: {versions}";
+            _solution.Warnings.Add(warning);
+            Warning?.Invoke(warning);
         }
 
-        public void CheckForBlacklistedReferences()
+        var referenced = warningRefs
+            .SelectMany(g => g.AsEnumerable())
+            .Select(g => g.Key)
+            .ToList();
+
+        foreach (var reference in Projects)
         {
-            Processing?.Invoke("Check for blacklisted references...");
-
-            foreach (var reference in References.Where(r => !r.IsWhitelisted))
-            {
-                if (reference.IsBlacklisted)
-                {
-                    var error = $"Blacklisted: {reference.Name} {reference.Version}";
-                    if (!solution.Errors.Contains(error))
-                    {
-                        solution.Errors.Add(error);
-                        Error?.Invoke(error);
-                    }
-                }
-            }
+            reference.IsWarning = referenced.Contains(reference.SourceId);
         }
+    }
 
-        public string CheckResult
+    private void CheckForBlacklistedProjects()
+    {
+        Processing?.Invoke("Check for blacklisted Project references...");
+
+        foreach (var reference in Projects.Where(r => !r.IsWhitelisted))
         {
-            get
+            if (reference.IsBlacklisted)
             {
-                if (!checkDone) return null;
-
-                var result = string.Empty;
-                switch (solution.Errors.Count)
+                var error = $"Blacklisted: {reference.ProjectFileName} {reference.Version}";
+                if (!_solution.Errors.Contains(error))
                 {
-                    case 0:
-                        result += "No errors";
-                        break;
-                    case 1:
-                        result += "1 error";
-                        break;
-                    default:
-                        result += $"{solution.Errors.Count} errors";
-                        break;
+                    _solution.Errors.Add(error);
+                    Error?.Invoke(error);
                 }
-                result += ", ";
-                switch (solution.Warnings.Count)
-                {
-                    case 0:
-                        result += "no warnings";
-                        break;
-                    case 1:
-                        result += "1 warning";
-                        break;
-                    default:
-                        result += $"{solution.Warnings.Count} warnings";
-                        break;
-                }
-
-                return result;
             }
         }
+    }
 
-        public void Save()
+    private void CheckForMixedNugetReferences()
+    {
+        Processing?.Invoke("Check for mixed Nuget references...");
+
+        var refGroups = _nugetReferences.GroupBy(r => r.Name)
+            .Select(g => g.AsQueryable().ToList())
+            .Where(rl => rl.Count > 1)
+            .ToList();
+
+        var warningRefs = refGroups.Select(g => g.GroupBy(r => r.RefId).ToList())
+            .Where(rg => rg.Count > 1)
+            .ToList();
+
+        foreach (var warningRef in warningRefs)
         {
-            foreach (var project in solution.Projects)
-            {
-                foreach (var reference in project.References)
-                {
-                    var isWhitelisted = refList["Whitelisted"].Get(reference.IniKey, false);
-                    var isBlacklisted = refList["Blacklisted"].Get(reference.IniKey, false);
+            var warnRef = warningRef.First().AsEnumerable().First();
+            var versions = string.Join(" <-> ",
+                warningRef.SelectMany(w => w.AsEnumerable())
+                    .Select(r => r.Version).Distinct()
+            );
 
-                    if (reference.IsWhitelisted != isWhitelisted)
-                    {
-                        refList["Whitelisted"].Set(reference.IniKey, reference.IsWhitelisted);
-                    }
-                    if (reference.IsBlacklisted != isBlacklisted)
-                    {
-                        refList["Blacklisted"].Set(reference.IniKey, reference.IsBlacklisted);
-                    }
-                }
-            }
-
-            refList.Save();
+            var warning = $"{warnRef.Name} {warnRef.Version}, used: {versions}";
+            _solution.Warnings.Add(warning);
+            Warning?.Invoke(warning);
         }
 
+        var referenced = warningRefs
+            .SelectMany(g => g.AsEnumerable())
+            .Select(g => g.Key)
+            .ToList();
+
+        foreach (var reference in Projects)
+        {
+            reference.IsWarning = referenced.Contains(reference.SourceId);
+        }
+    }
+
+    private void CheckForBlacklistedNugetReferences()
+    {
+        Processing?.Invoke("Check for blacklisted Nuget references...");
+
+        foreach (var reference in _nugetReferences.Where(r => !r.IsWhitelisted))
+        {
+            if (reference.IsBlacklisted)
+            {
+                var error = $"Blacklisted: {reference.Name} {reference.Version}";
+                if (!_solution.Errors.Contains(error))
+                {
+                    _solution.Errors.Add(error);
+                    Error?.Invoke(error);
+                }
+            }
+        }
+    }
+
+
+    public string CheckResult
+    {
+        get
+        {
+            if (!_checkDone) return string.Empty;
+
+            var result = string.Empty;
+            switch (_solution.Errors.Count)
+            {
+                case 0:
+                    result += "No errors";
+                    break;
+                case 1:
+                    result += "1 error";
+                    break;
+                default:
+                    result += $"{_solution.Errors.Count} errors";
+                    break;
+            }
+
+            result += ", ";
+            switch (_solution.Warnings.Count)
+            {
+                case 0:
+                    result += "no warnings";
+                    break;
+                case 1:
+                    result += "1 warning";
+                    break;
+                default:
+                    result += $"{_solution.Warnings.Count} warnings";
+                    break;
+            }
+
+            return result;
+        }
+    }
+
+    public void Save()
+    {
+        foreach (var project in _solution.Projects)
+        {
+            foreach (var reference in project.ProjectReferences)
+            {
+                var isWhitelisted = _refList["Whitelisted"].Get(reference.IniKey, false);
+                var isBlacklisted = _refList["Blacklisted"].Get(reference.IniKey, false);
+
+                if (reference.IsWhitelisted != isWhitelisted)
+                {
+                    _refList["Whitelisted"].Set(reference.IniKey, reference.IsWhitelisted);
+                }
+
+                if (reference.IsBlacklisted != isBlacklisted)
+                {
+                    _refList["Blacklisted"].Set(reference.IniKey, reference.IsBlacklisted);
+                }
+            }
+        }
+
+        _refList.Save();
     }
 }

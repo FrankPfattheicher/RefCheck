@@ -1,6 +1,6 @@
 RefCheck
 =========
-A checker for .NET solution nuget references.
+A checker for VisualStudio solution project references.
 
 Working on large VisualStudio solutions with lots of projects can lead to a mess of external references.
 

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Local
@@ -9,7 +8,7 @@ namespace RefCheck
     public class Solution
     {
         public string Name { get; private set; }
-        public string FormatVersion { get; private set; } = string.Empty;
+        public string FormatVersion { get; private set; }
 
         public List<Project> Projects { get; private set; }
 
@@ -20,7 +19,7 @@ namespace RefCheck
         public List<string> Errors { get; set; }
         public List<string> Warnings { get; set; }
 
-        public Solution(string name)
+        public Solution(string name = null)
         {
             Name = name;
             Projects = new List<Project>();
@@ -30,8 +29,9 @@ namespace RefCheck
 
         public bool Load(string fileName)
         {
-            // Microsoft Visual Studio Solution File, Format Version 12.00
-            // # Visual Studio Version 16
+            // Microsoft Visual Studio Solution File, Format Version 11.00
+            // # Visual Studio 2010
+            // Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoreData", "CoreData\CoreData.csproj", "{449FBB08-D1A5-4166-8AA0-E63DCC820148}"
 
             Name = fileName;
 
@@ -51,13 +51,11 @@ namespace RefCheck
             var path = Path.GetDirectoryName(fileName) ?? ".";
 
             var projectFiles = lines
-                .Where(line => line.StartsWith("Project("))
-                .Select(line => line.Split(',')[1].Trim())
-                .Select(name => name.Substring(1, name.Length - 2));
+                .Where(line => line.StartsWith("Project"))
+                .Select(line => line.Split(',')[1].Trim());
             projectFiles = projectFiles
-                .Where(name => name != "Solution Items")
-                .Where(name => name.EndsWith(".csproj", StringComparison.InvariantCultureIgnoreCase))
-                .Select(name => Path.GetFullPath(Path.Combine(path, name)));
+                .Where(name => name != "\"Solution Items\"")
+                .Select(name => Path.GetFullPath(Path.Combine(path, name.Substring(1, name.Length - 2))));
 
             foreach (var projectFile in projectFiles)
             {
@@ -66,12 +64,7 @@ namespace RefCheck
                     Errors.Add("Project file does not exist: " + projectFile);
                     continue;
                 }
-                
-                var project = new Project(this, projectFile);
-                if (project.Load())
-                {
-                    Projects.Add(project);
-                }
+                Projects.Add(Project.Load(Name, projectFile));
             }
             
             return true;

@@ -7,16 +7,8 @@ using Application = System.Windows.Application;
 
 namespace RefCheck
 {
-    public static class App
+    public static partial class App
     {
-        public enum ReturnCode
-        {
-            Ok = 0,
-            Warning = 1,
-            Error = 2,
-            Fatal = 3
-        }
-
         private static Assembly CurrentDomainOnAssemblyResolve(object sender, ResolveEventArgs args)
         {
             var assembly = Assembly.GetExecutingAssembly();
@@ -68,7 +60,7 @@ namespace RefCheck
             app.Run(new MainWindow());
         }
 
-        private static ReturnCode ConsoleMain(string[] args)
+        private static AppReturnCode ConsoleMain(string[] args)
         {
             Console.WriteLine(@"RefCheck");
             var defaultColor = Console.ForegroundColor;
@@ -78,7 +70,7 @@ namespace RefCheck
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine(@"Solution file not found: " + fileName);
-                return ReturnCode.Fatal;
+                return AppReturnCode.Fatal;
             }
 
             var solution = new Solution();
@@ -120,18 +112,18 @@ namespace RefCheck
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine(checker.CheckResult);
-                return ReturnCode.Error;
+                return AppReturnCode.Error;
             }
             if (solution.Warnings.Count > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.WriteLine(checker.CheckResult);
-                return ReturnCode.Warning;
+                return AppReturnCode.Warning;
             }
 
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine(@"No Errors, no warnings.");
-            return ReturnCode.Ok;
+            return AppReturnCode.Ok;
         }
 
         [DllImport("kernel32.dll")]
