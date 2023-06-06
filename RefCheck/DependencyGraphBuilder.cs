@@ -29,32 +29,32 @@ public class DependencyGraphBuilder
         _graph.WriteLine("@startuml");
         _graph.WriteLine($"title Nuget Packages of Solution {name}");
 
+        var graphLines = new List<string>();
+        
+        // ====== projects ======
         foreach (var project in _solution.Projects)
         {
-            _graph.WriteLine($"rectangle \"{project.ShortName}\" #8080FF");
+            graphLines.Add($"rectangle \"{project.ShortName}\" #8080FF");
         }
-
-        var references = _solution.Projects
-            .SelectMany(p => p.ProjectReferences)
-            .Where(r => r.RefFrom != null)
-            .Select(r => $"\"{r.RefFrom!.ShortName}\" -- \"{r.ShortName}\"");
-
-        foreach (var line in references.Distinct())
+        foreach (var project in _solution.Projects)
         {
-            _graph.WriteLine(line);    
+            foreach (var projectReference in project.ProjectReferences)
+            {
+                graphLines.Add($"\"{project.ShortName}\" -- \"{projectReference.ShortName}\"");
+            }
         }
         
-        
+        // ====== project nuget references ======
         var nugetReferences = _solution.Projects
             .SelectMany(p => p.NugetReferences)
             .Where(nu => _includeSystemPackages || !nu.IsSystemPackage)
-            .DistinctBy(nu => nu.RefId)
             .ToList();
+        
         foreach (var nugetReference in nugetReferences)
         {
             var groupName = nugetReference.Name.Split('.').First();
             var color = _refSettings["Color"].Get<string>(groupName) ?? nugetReference.Color;
-            _graph.WriteLine($"component \"{nugetReference.Name}\" as {nugetReference.RefId} {color}");
+            graphLines.Add($"component \"{nugetReference.Name}\\n{nugetReference.Version}\" as {nugetReference.RefId} {color}");
 
             var projects = _solution.Projects
                 .Where(p => p.NugetReferences.Any(n => n.RefId == nugetReference.RefId));
@@ -62,15 +62,36 @@ public class DependencyGraphBuilder
             {
                 if (project.IsImplicitNugetReference(nugetReference))
                 {
-                    _graph.WriteLine($"\"{project.ShortName}\" =[#red]= {nugetReference.RefId} : redundant\\nreference");
+                    graphLines.Add($"\"{project.ShortName}\" =[#red]= {nugetReference.RefId} : redundant\\nreference");
                 }
                 else
                 {
-                    _graph.WriteLine($"\"{project.ShortName}\" -- {nugetReference.RefId}");
+                    graphLines.Add($"\"{project.ShortName}\" -- {nugetReference.RefId}");
                 }
             }
         }
         
+        // ====== nuget references to other nuget packages ======
+        var innerReferences = nugetReferences
+            .SelectMany(nu => nu.References)
+            .Where(nu => _includeSystemPackages || !nu.IsSystemPackage)
+            .DistinctBy(nu => nu.RefId)
+            .ToList();
+        foreach (var innerReference in innerReferences)
+        {
+            if(innerReference.RefFrom == null) continue;
+            
+            var groupName = innerReference.Name.Split('.').First();
+            var color = _refSettings["Color"].Get<string>(groupName) ?? innerReference.Color;
+            graphLines.Add($"component \"{innerReference.Name}\\n{innerReference.Version}\" as {innerReference.RefId} {color}");
+            
+            graphLines.Add($"\"{innerReference.RefFrom.RefId}\" -- {innerReference.RefId}");
+        }
+        
+        foreach (var line in graphLines.Distinct())
+        {
+            _graph.WriteLine(line);    
+        }
         _graph.WriteLine("@enduml");
         _graph.Flush();
         _graph.Close();

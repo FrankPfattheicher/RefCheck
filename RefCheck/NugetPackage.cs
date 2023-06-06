@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
+using System.Xml;
 
 namespace RefCheck;
 
@@ -55,7 +57,7 @@ public class NugetPackage
     }
 
     [Browsable(false)]
-    public string RefId => $"{Name.Replace("-", "_")}_{Version}";
+    public string RefId => $"{Name.Replace("-", "_")}_{Version.Replace("-", "_")}";
 
     public override string ToString()
     {
@@ -83,10 +85,60 @@ public class NugetPackage
     
     public readonly List<NugetPackage> References = new();
 
+    public NugetPackage? RefFrom { get; set; }
+
 
     public NugetPackage(string name, string version)
     {
         Name = name;
         Version = version;
     }
+
+    public void LoadReferences(string framework)
+    {
+        Console.WriteLine($"Loading references of {Name}");
+
+        var path = Path.GetFullPath($@"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}\.nuget\packages\{Name}\{Version}");
+        var nuspec = Path.Combine(path, $"{Name}.nuspec");
+        if (!File.Exists(nuspec)) return;
+
+        var xml = new XmlDocument();
+        xml.Load(nuspec);
+        
+        var references = xml
+            .SelectNodes("//*[local-name()='package']/*[local-name()='metadata']/*[local-name()='dependencies']/*[local-name()='group']")
+            ?.GetEnumerator();
+
+        while (references != null && references.MoveNext())
+        {
+            if (references.Current is not XmlNode reference) continue;
+
+            var targetFramework = reference.Attributes?["targetFramework"]?.Value;
+            if (targetFramework == null) continue;
+            if (!targetFramework.StartsWith(".NETStandard", StringComparison.InvariantCultureIgnoreCase) && targetFramework != framework) continue;
+
+            var dependencies = reference.SelectNodes("*[local-name()='dependency']")?.GetEnumerator();
+            while (dependencies != null && dependencies.MoveNext())
+            {
+                if (dependencies.Current is not XmlNode dependency) continue;
+
+                var name = dependency.Attributes?["id"]?.Value;
+                var version = dependency.Attributes?["version"]?.Value;
+                if (name == null || version == null) continue;
+                
+                if(name.StartsWith("System.", StringComparison.InvariantCultureIgnoreCase)) continue;
+                if(name.StartsWith("Microsoft.NETCore.", StringComparison.InvariantCultureIgnoreCase)) continue;
+            
+                var nugetRef = new NugetPackage(name, version)
+                {
+                    RefFrom = this
+                };
+                nugetRef.LoadReferences(framework);
+                References.Add(nugetRef);
+            }
+        }
+
+    }
+    
+    
 }

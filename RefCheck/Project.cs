@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -50,6 +51,8 @@ public class Project
     public string SourcePath { get; set; } = string.Empty;
     public string SourceVersion { get; set; } = string.Empty;
 
+    public string TargetFramework { get; set; } = string.Empty;
+    
     public Project? RefFrom { get; set; }
 
     public string IniKey
@@ -111,11 +114,24 @@ public class Project
             return false;
         }
 
+        Console.WriteLine($"Loading project {ProjectFileName}");
+        
         var xml = new XmlDocument();
         xml.Load(ProjectFileName);
 
         var path = Path.GetDirectoryName(ProjectFileName) ?? ".";
 
+        var targetFramework = xml
+            .SelectNodes("//*[local-name()='Project']/*[local-name()='PropertyGroup']/*[local-name()='TargetFramework']")
+            ?.GetEnumerator();
+
+        if (targetFramework != null && targetFramework.MoveNext())
+        {
+            if (targetFramework.Current is XmlNode framework)
+            {
+                TargetFramework = framework.InnerText;
+            }
+        }
         
         var nugetReferences = xml
             .SelectNodes("//*[local-name()='Project']/*[local-name()='ItemGroup']/*[local-name()='PackageReference']")
@@ -130,9 +146,9 @@ public class Project
             if (name == null || version == null) continue;
             
             var nugetRef = new NugetPackage(name, version);
+            nugetRef.LoadReferences(TargetFramework);
             NugetReferences.Add(nugetRef);
         }
-
 
         var projects = xml
             .SelectNodes("//*[local-name()='Project']/*[local-name()='ItemGroup']/*[local-name()='ProjectReference']")
