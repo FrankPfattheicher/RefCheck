@@ -11,7 +11,7 @@ namespace RefCheck;
 public class ReferenceChecker
 {
     private readonly Solution _solution;
-    private readonly Profile _refList;
+    private readonly Profile _refSettings;
     private readonly Dictionary<string, string> _frameworkAssemblies = new();
     private bool _checkDone;
 
@@ -22,10 +22,10 @@ public class ReferenceChecker
     public event Action<string>? Error;
     public event Action<string>? Warning;
 
-    public ReferenceChecker(Solution solution)
+    public ReferenceChecker(Solution solution, Profile refSettings)
     {
         _solution = solution;
-        _refList = new Profile(Path.ChangeExtension(solution.Name, "references"));
+        _refSettings = refSettings;
 
         if (Environment.OSVersion.Platform == PlatformID.Win32NT)
         {
@@ -113,8 +113,8 @@ public class ReferenceChecker
 
     private void CheckProject(Project project)
     {
-        project.IsWhitelisted = _refList["Whitelisted"].Get(project.IniKey, false);
-        project.IsBlacklisted = _refList["Blacklisted"].Get(project.IniKey, false);
+        project.IsWhitelisted = _refSettings["Whitelisted"].Get(project.IniKey, false);
+        project.IsBlacklisted = _refSettings["Blacklisted"].Get(project.IniKey, false);
 
         if (!string.IsNullOrEmpty(project.SourcePath))
         {
@@ -141,8 +141,8 @@ public class ReferenceChecker
     {
         Processing?.Invoke($"[NUGET] {nugetPackage.Name} {nugetPackage.Version}");
 
-        nugetPackage.IsWhitelisted = _refList["Whitelisted"].Get(nugetPackage.IniKey, false);
-        nugetPackage.IsBlacklisted = _refList["Blacklisted"].Get(nugetPackage.IniKey, false);
+        nugetPackage.IsWhitelisted = _refSettings["Whitelisted"].Get(nugetPackage.IniKey, false);
+        nugetPackage.IsBlacklisted = _refSettings["Blacklisted"].Get(nugetPackage.IniKey, false);
 
         // if (!string.IsNullOrEmpty(nugetPackage.SourcePath))
         // {
@@ -167,7 +167,7 @@ public class ReferenceChecker
 
     private void CheckForMixedProjects()
     {
-        Processing?.Invoke("Check for mixed project references...");
+        Processing?.Invoke("Check for mixed project references..");
 
         var refGroups = Projects.GroupBy(r => r.RefId)
             .Select(g => g.AsQueryable().ToList())
@@ -204,7 +204,7 @@ public class ReferenceChecker
 
     private void CheckForBlacklistedProjects()
     {
-        Processing?.Invoke("Check for blacklisted Project references...");
+        Processing?.Invoke("Check for blacklisted Project references..");
 
         foreach (var reference in Projects.Where(r => !r.IsWhitelisted))
         {
@@ -222,7 +222,7 @@ public class ReferenceChecker
 
     private void CheckForMixedNugetReferences()
     {
-        Processing?.Invoke("Check for mixed Nuget references...");
+        Processing?.Invoke("Check for mixed Nuget references..");
 
         var refGroups = _nugetReferences.GroupBy(r => r.Name)
             .Select(g => g.AsQueryable().ToList())
@@ -259,7 +259,7 @@ public class ReferenceChecker
 
     private void CheckForBlacklistedNugetReferences()
     {
-        Processing?.Invoke("Check for blacklisted Nuget references...");
+        Processing?.Invoke("Check for blacklisted Nuget references..");
 
         foreach (var reference in _nugetReferences.Where(r => !r.IsWhitelisted))
         {
@@ -320,21 +320,21 @@ public class ReferenceChecker
         {
             foreach (var reference in project.ProjectReferences)
             {
-                var isWhitelisted = _refList["Whitelisted"].Get(reference.IniKey, false);
-                var isBlacklisted = _refList["Blacklisted"].Get(reference.IniKey, false);
+                var isWhitelisted = _refSettings["Whitelisted"].Get(reference.IniKey, false);
+                var isBlacklisted = _refSettings["Blacklisted"].Get(reference.IniKey, false);
 
                 if (reference.IsWhitelisted != isWhitelisted)
                 {
-                    _refList["Whitelisted"].Set(reference.IniKey, reference.IsWhitelisted);
+                    _refSettings["Whitelisted"].Set(reference.IniKey, reference.IsWhitelisted);
                 }
 
                 if (reference.IsBlacklisted != isBlacklisted)
                 {
-                    _refList["Blacklisted"].Set(reference.IniKey, reference.IsBlacklisted);
+                    _refSettings["Blacklisted"].Set(reference.IniKey, reference.IsBlacklisted);
                 }
             }
         }
 
-        _refList.Save();
+        _refSettings.Save();
     }
 }

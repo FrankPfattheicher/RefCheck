@@ -2,6 +2,7 @@
 using System.IO;
 using System.Reflection;
 using IctBaden.Framework.AppUtils;
+using IctBaden.Framework.IniFile;
 
 [assembly: AssemblyDescription("VisualStudio solution reference checking tool")]
 [assembly:
@@ -37,10 +38,13 @@ public static class Program
             Console.WriteLine(@"Error: " + error);
         }
 
-        Console.WriteLine($"Checking {solution.Projects.Count} projects.");
+        Console.WriteLine($"Checking {solution.Projects.Count} projects");
 
-        var checker = new ReferenceChecker(solution);
-        Console.WriteLine($"Checking {checker.Projects.Count} references.");
+        var refSettings = new Profile(Path.ChangeExtension(fileName, "references"));
+        Console.WriteLine($"Using settings from {refSettings.FileName}");
+        
+        var checker = new ReferenceChecker(solution, refSettings);
+        Console.WriteLine($"Checking {checker.Projects.Count} references");
 
         checker.Processing += projectName =>
         {
@@ -64,13 +68,13 @@ public static class Program
         {
             var pumlName = Path.ChangeExtension( solution.Name, "puml");
             Console.WriteLine($"Building dependency graph {pumlName}");
-            var graphBuilder = new DependencyGraphBuilder(solution, pumlName, false);
+            var graphBuilder = new DependencyGraphBuilder(solution, refSettings, pumlName, false);
             graphBuilder.BuildNugetGraph();
         }
         
         
         Console.ForegroundColor = defaultColor;
-        Console.WriteLine(@"Check done.");
+        Console.WriteLine(@"Check done");
 
         if (solution.Errors.Count > 0)
         {
@@ -87,7 +91,7 @@ public static class Program
         }
 
         Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine(@"No Errors, no warnings.");
+        Console.WriteLine(@"No Errors, no warnings");
         return (int)AppReturnCode.Ok;
     }
 }

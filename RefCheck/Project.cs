@@ -50,6 +50,7 @@ public class Project
     public string SourcePath { get; set; } = string.Empty;
     public string SourceVersion { get; set; } = string.Empty;
 
+    public Project? RefFrom { get; set; }
 
     public string IniKey
     {
@@ -179,7 +180,8 @@ public class Project
                     }
                 }
             }
-            
+
+            project.RefFrom = this;
             ProjectReferences.Add(project);
         }
 
