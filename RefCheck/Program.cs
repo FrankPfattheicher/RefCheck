@@ -7,7 +7,7 @@ using IctBaden.Framework.IniFile;
 [assembly: AssemblyDescription("VisualStudio solution reference checking tool")]
 [assembly:
     AssemblyContact(Address = "Seboldstraße 9", City = "76227 Karlsruhe", Mail = "support@ict-baden.de",
-        Phone = "0172-7207196", Url = "http://www.ict-baden.de")]
+        Phone = "0172-7207196", Url = "https://www.ict-baden.de")]
 [assembly: AssemblyCopyright("Copyright ©2014-2023 ICT Baden GmbH")]
 
 namespace RefCheck;

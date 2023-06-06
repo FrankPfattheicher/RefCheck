@@ -60,14 +60,9 @@ public class DependencyGraphBuilder
                 .Where(p => p.NugetReferences.Any(n => n.RefId == nugetReference.RefId));
             foreach (var project in projects)
             {
-                if (project.IsImplicitNugetReference(nugetReference))
-                {
-                    graphLines.Add($"\"{project.ShortName}\" =[#red]= {nugetReference.RefId} : redundant\\nreference");
-                }
-                else
-                {
-                    graphLines.Add($"\"{project.ShortName}\" -- {nugetReference.RefId}");
-                }
+                graphLines.Add(project.IsImplicitNugetReference(nugetReference)
+                    ? $"\"{project.ShortName}\" =[#red]= {nugetReference.RefId} : redundant\\nreference"
+                    : $"\"{project.ShortName}\" -- {nugetReference.RefId}");
             }
         }
         

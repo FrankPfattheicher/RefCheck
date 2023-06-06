@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
 using System.Xml;
+// ReSharper disable MemberCanBePrivate.Global
+// ReSharper disable UnusedAutoPropertyAccessor.Global
+// ReSharper disable UnusedMember.Global
 
 namespace RefCheck;
 
@@ -13,8 +15,7 @@ public class NugetPackage
 
     private bool _isWhitelisted;
     private bool _isBlacklisted;
-    public bool IsPresent { get; set; }
-    [Browsable(false)]
+    public bool IsPresent { get; set; } = true;
     public bool IsWarning { get; set; }
 
     public bool IsWhitelisted
@@ -56,7 +57,6 @@ public class NugetPackage
         }
     }
 
-    [Browsable(false)]
     public string RefId => $"{Name.Replace("-", "_")}_{Version.Replace("-", "_")}";
 
     public override string ToString()
@@ -85,7 +85,7 @@ public class NugetPackage
     
     public readonly List<NugetPackage> References = new();
 
-    public NugetPackage? RefFrom { get; set; }
+    public NugetPackage? RefFrom { get; init; }
 
 
     public NugetPackage(string name, string version)
@@ -100,7 +100,11 @@ public class NugetPackage
 
         var path = Path.GetFullPath($@"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}\.nuget\packages\{Name}\{Version}");
         var nuspec = Path.Combine(path, $"{Name}.nuspec");
-        if (!File.Exists(nuspec)) return;
+        if (!File.Exists(nuspec))
+        {
+            IsPresent = false;
+            return;
+        }
 
         var xml = new XmlDocument();
         xml.Load(nuspec);

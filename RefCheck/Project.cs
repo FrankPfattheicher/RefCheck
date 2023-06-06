@@ -6,6 +6,8 @@ using System.IO;
 using System.Linq;
 using System.Xml;
 using IctBaden.Framework.FileSystem;
+// ReSharper disable UnusedAutoPropertyAccessor.Global
+// ReSharper disable MemberCanBePrivate.Global
 
 namespace RefCheck;
 
@@ -15,7 +17,7 @@ public class Project
     private bool _isWhitelisted;
     private bool _isBlacklisted;
 
-    public bool IsPresent { get; set; }
+    public bool IsPresent { get; set; } = true;
     public bool IsWarning { get; set; }
 
     public bool IsWhitelisted
