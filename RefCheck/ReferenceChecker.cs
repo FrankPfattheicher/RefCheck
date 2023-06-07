@@ -49,7 +49,7 @@ public class ReferenceChecker
             if (visualStudioToolsDir != null)
             {
                 var visualStudioCommonDir = Path.GetDirectoryName(Path.GetDirectoryName(visualStudioToolsDir));
-                if(visualStudioCommonDir != null) AddFrameworkDlls(visualStudioCommonDir);
+                if (visualStudioCommonDir != null) AddFrameworkDlls(visualStudioCommonDir);
             }
 #pragma warning restore CA1416
         }
@@ -92,6 +92,7 @@ public class ReferenceChecker
         {
             CheckForMixedNugetReferences();
             CheckForBlacklistedNugetReferences();
+            CheckForImplicitNugetReferences();
         }
 
         _checkDone = true;
@@ -275,6 +276,29 @@ public class ReferenceChecker
         }
     }
 
+    private void CheckForImplicitNugetReferences()
+    {
+        Processing?.Invoke("Check for implicit Nuget references..");
+
+        foreach (var nugetReference in _nugetReferences)
+        {
+            var projects = _solution.Projects
+                .Where(p => p.NugetReferences.Any(n => n.RefId == nugetReference.RefId));
+            foreach (var project in projects)
+            {
+                if (project.IsImplicitNugetReference(nugetReference))
+                {
+                    var warning =
+                        $"Unnecessary reference: Project {project.ShortName} -> {nugetReference.Name} {nugetReference.Version}";
+                    if (!_solution.Errors.Contains(warning))
+                    {
+                        _solution.Warnings.Add(warning);
+                        Warning?.Invoke(warning);
+                    }
+                }
+            }
+        }
+    }
 
     public string CheckResult
     {

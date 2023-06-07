@@ -69,7 +69,7 @@ public static class Program
             var pumlName = Path.ChangeExtension( solution.Name, "puml");
             Console.WriteLine($"Building dependency graph {pumlName}");
             var graphBuilder = new DependencyGraphBuilder(solution, refSettings, pumlName, false);
-            graphBuilder.BuildNugetGraph();
+            graphBuilder.BuildPlantUmlGraph();
         }
         
         

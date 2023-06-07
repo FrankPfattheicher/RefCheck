@@ -12,6 +12,7 @@ public class DependencyGraphBuilder
     private readonly bool _includeSystemPackages;
 
     private readonly StreamWriter _graph;
+    private readonly List<NugetPackage> _nugetReferences;
 
     public DependencyGraphBuilder(Solution solution, Profile refSettings, string fileName, bool includeSystemPackages)
     {
@@ -21,9 +22,18 @@ public class DependencyGraphBuilder
 
         var fileStream = File.Create(fileName);
         _graph = new StreamWriter(fileStream);
+        
+        _nugetReferences = _solution.Projects
+            .SelectMany(p => p.NugetReferences)
+            .Where(nu => _includeSystemPackages || !nu.IsSystemPackage)
+            .ToList();
     }
 
-    public void BuildNugetGraph()
+    private bool IsMixedNugetVersionReference(NugetPackage nugetReference) =>
+        _nugetReferences.Any(nu => nu.Name == nugetReference.Name && nu.Version != nugetReference.Version);
+
+    
+    public void BuildPlantUmlGraph()
     {
         var name = Path.GetFileNameWithoutExtension(_solution.Name);
         _graph.WriteLine("@startuml");
@@ -45,15 +55,16 @@ public class DependencyGraphBuilder
         }
         
         // ====== project nuget references ======
-        var nugetReferences = _solution.Projects
-            .SelectMany(p => p.NugetReferences)
-            .Where(nu => _includeSystemPackages || !nu.IsSystemPackage)
-            .ToList();
-        
-        foreach (var nugetReference in nugetReferences)
+        foreach (var nugetReference in _nugetReferences)
         {
             var groupName = nugetReference.Name.Split('.').First();
             var color = _refSettings["Color"].Get<string>(groupName) ?? nugetReference.Color;
+
+            if (IsMixedNugetVersionReference(nugetReference))
+            {
+                color += ";line:red;line.bold";
+            }
+            
             graphLines.Add($"component \"{nugetReference.Name}\\n{nugetReference.Version}\" as {nugetReference.RefId} {color}");
 
             var projects = _solution.Projects
@@ -67,7 +78,7 @@ public class DependencyGraphBuilder
         }
         
         // ====== nuget references to other nuget packages ======
-        var innerReferences = nugetReferences
+        var innerReferences = _nugetReferences
             .SelectMany(nu => nu.References)
             .Where(nu => _includeSystemPackages || !nu.IsSystemPackage)
             .DistinctBy(nu => nu.RefId)
