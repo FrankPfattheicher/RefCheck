@@ -17,6 +17,8 @@ namespace RefCheck
         public string Name { get; private set; }
         public string FormatVersion { get; private set; } = string.Empty;
 
+        public string RefId => $"solution_{Name}";
+
         public Profile RefSettings { get; private set; }
         
         public List<Project> Projects { get; private set; }
