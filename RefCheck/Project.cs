@@ -46,7 +46,7 @@ public class Project
         }
     }
 
-    public string RefId => $"project_{ShortName}_{Version}";
+    public string RefId => $"project_{ShortName}";
     public string SourceId => $"{ProjectFileName}_{Version}_{SourceVersion}";
 
     public string Version { get; set; } = string.Empty;

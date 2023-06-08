@@ -20,9 +20,6 @@ public class DependencyGraphBuilder
         _graph = new StreamWriter(fileStream);
     }
 
-    private bool IsMixedNugetVersionReference(List<NugetPackage> nugetReferences, NugetPackage nugetReference) =>
-        nugetReferences.Any(nu => nu.Name == nugetReference.Name && nu.Version != nugetReference.Version);
-
     
     public void BuildPlantUmlGraph()
     {
@@ -32,7 +29,7 @@ public class DependencyGraphBuilder
         // ====== solutions ======
         foreach (var solution in _checker.Solutions)
         {
-            graphLines.Add($"rectangle \"{solution.Name}\" as {solution.RefId} #FF8080");
+            graphLines.Add($"rectangle \"Solution\\n{solution.Name}\" as {solution.RefId} #FF8080");
         }
         
         // ====== projects ======
@@ -51,7 +48,10 @@ public class DependencyGraphBuilder
         }
         
         // ====== project nuget references ======
-        var nugetReferences = _checker.NugetPackages;
+        var nugetReferences = _checker.NugetPackages
+            .OrderBy(nu => nu.Name)
+            .ToArray();
+        
         foreach (var solution in _checker.Solutions)
         {
             var refSettings = solution.RefSettings;
@@ -61,7 +61,10 @@ public class DependencyGraphBuilder
                 var groupName = nugetReference.Name.Split('.').First();
                 var color = refSettings["Color"].Get<string>(groupName) ?? nugetReference.Color;
 
-                if (IsMixedNugetVersionReference(nugetReferences, nugetReference))
+                var isMixedNugetVersionReference = nugetReferences
+                    .Any(nu => nu.Name == nugetReference.Name && nu.Version != nugetReference.Version);
+                
+                if (isMixedNugetVersionReference)
                 {
                     color += ";line:red;line.bold";
                 }
@@ -90,7 +93,6 @@ public class DependencyGraphBuilder
             
                 var groupName = innerReference.Name.Split('.').First();
                 var color = refSettings["Color"].Get<string>(groupName) ?? innerReference.Color;
-                graphLines.Add($"component \"{innerReference.Name}\\n{innerReference.Version}\" as {innerReference.RefId} {color}");
             
                 graphLines.Add($"\"{innerReference.RefFrom.RefId}\" -- {innerReference.RefId}");
             }

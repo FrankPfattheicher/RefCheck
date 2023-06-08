@@ -27,16 +27,11 @@ namespace RefCheck
 
         public string DisplayText => IsLoaded ? $"{FileName} ({Projects.Count} Projects)" : FileName;
 
-        public List<string> Errors { get; set; }
-        public List<string> Warnings { get; set; }
-
         public Solution(string fileName)
         {
             FileName = fileName;
             Name = Path.GetFileNameWithoutExtension(fileName);
             Projects = new List<Project>();
-            Errors = new List<string>();
-            Warnings = new List<string>();
             RefSettings = new Profile(Path.ChangeExtension(fileName, "references"));
         }
 
@@ -72,7 +67,7 @@ namespace RefCheck
             {
                 if (!File.Exists(projectFile))
                 {
-                    Errors.Add("Project file does not exist: " + projectFile);
+                    checker.Errors.Add("Project file does not exist: " + projectFile);
                     continue;
                 }
                 

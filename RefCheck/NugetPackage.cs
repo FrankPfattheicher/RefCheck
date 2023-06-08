@@ -92,7 +92,13 @@ public class NugetPackage
     public NugetPackage(string name, string version)
     {
         Name = name;
-        Version = version;
+        Version = version
+            .Replace("[", "")
+            .Replace("(", "")
+            .Replace(")", "")
+            .Replace("]", "")
+            .Split(',', StringSplitOptions.TrimEntries)
+            .Last();
     }
 
     public void LoadReferences(ReferenceChecker checker, string framework)
@@ -139,7 +145,7 @@ public class NugetPackage
                 {
                     nugetRef = new NugetPackage(name, version) { RefFrom = this };
                     nugetRef.LoadReferences(checker, framework);
-                    //checker.NugetPackages.Add(nugetRef);
+                    checker.NugetPackages.Add(nugetRef);
                 }
                 References.Add(nugetRef);
             }

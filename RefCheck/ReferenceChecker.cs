@@ -21,9 +21,9 @@ public class ReferenceChecker
     public event Action<string>? Warning;
 
 
-    public List<string> Errors => Solutions.SelectMany(s => s.Errors).ToList();
-    public List<string> Warnings => Solutions.SelectMany(s => s.Warnings).ToList();
-    
+    public List<string> Errors { get; set; } = new();
+    public List<string> Warnings { get; set; } = new();
+
 
     public ReferenceChecker()
     {
@@ -82,7 +82,7 @@ public class ReferenceChecker
             var solution = new Solution(fileName);
             solution.Load(this);
             Console.WriteLine(@"Solution: " + solution.FileName);
-            foreach (var error in solution.Errors)
+            foreach (var error in Errors)
             {
                 Error?.Invoke(error);
             }
@@ -107,7 +107,7 @@ public class ReferenceChecker
 
         if (Projects.Count > 0)
         {
-            CheckForMixedProjects(solution);
+            CheckForMixedProjectReferences(solution);
             CheckForBlacklistedProjects(solution);
         }
 
@@ -188,7 +188,7 @@ public class ReferenceChecker
         // }
     }
 
-    private void CheckForMixedProjects(Solution solution)
+    private void CheckForMixedProjectReferences(Solution solution)
     {
         Processing?.Invoke("Check for mixed project references..");
 
@@ -210,8 +210,11 @@ public class ReferenceChecker
             );
 
             var warning = $"{warnRef.ProjectFileName} {warnRef.Version}, used: {versions}";
-            solution.Warnings.Add(warning);
-            Warning?.Invoke(warning);
+            if (!Warnings.Contains(warning))
+            {
+                Warnings.Add(warning);
+                Warning?.Invoke(warning);
+            }
         }
 
         var referenced = warningRefs
@@ -234,9 +237,9 @@ public class ReferenceChecker
             if (reference.IsBlacklisted)
             {
                 var error = $"Blacklisted: {reference.ProjectFileName} {reference.Version}";
-                if (!solution.Errors.Contains(error))
+                if (!Errors.Contains(error))
                 {
-                    solution.Errors.Add(error);
+                    Errors.Add(error);
                     Error?.Invoke(error);
                 }
             }
@@ -264,9 +267,12 @@ public class ReferenceChecker
                     .Select(r => r.Version).Distinct()
             );
 
-            var warning = $"{warnRef.Name} {warnRef.Version}, used: {versions}";
-            solution.Warnings.Add(warning);
-            Warning?.Invoke(warning);
+            var warning = $"{warnRef.Name}, used: {versions}";
+            if (!Warnings.Contains(warning))
+            {
+                Warnings.Add(warning);
+                Warning?.Invoke(warning);
+            }
         }
 
         var referenced = warningRefs
@@ -289,9 +295,9 @@ public class ReferenceChecker
             if (reference.IsBlacklisted)
             {
                 var error = $"Blacklisted: {reference.Name} {reference.Version}";
-                if (!solution.Errors.Contains(error))
+                if (!Errors.Contains(error))
                 {
-                    solution.Errors.Add(error);
+                    Errors.Add(error);
                     Error?.Invoke(error);
                 }
             }
@@ -312,9 +318,9 @@ public class ReferenceChecker
                 {
                     var warning =
                         $"Unnecessary reference: Project {project.ShortName} -> {nugetReference.Name} {nugetReference.Version}";
-                    if (!solution.Errors.Contains(warning))
+                    if (!Warnings.Contains(warning))
                     {
-                        solution.Warnings.Add(warning);
+                        Warnings.Add(warning);
                         Warning?.Invoke(warning);
                     }
                 }
