@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Xml;
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable UnusedAutoPropertyAccessor.Global
@@ -94,9 +95,9 @@ public class NugetPackage
         Version = version;
     }
 
-    public void LoadReferences(string framework)
+    public void LoadReferences(ReferenceChecker checker, string framework)
     {
-        Console.WriteLine($"Loading references of {Name}");
+        Console.WriteLine($"Loading Nuget references of {Name}");
 
         var path = Path.GetFullPath($@"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}\.nuget\packages\{Name}\{Version}");
         var nuspec = Path.Combine(path, $"{Name}.nuspec");
@@ -133,11 +134,13 @@ public class NugetPackage
                 if(name.StartsWith("System.", StringComparison.InvariantCultureIgnoreCase)) continue;
                 if(name.StartsWith("Microsoft.NETCore.", StringComparison.InvariantCultureIgnoreCase)) continue;
             
-                var nugetRef = new NugetPackage(name, version)
+                var nugetRef = checker.NugetPackages.FirstOrDefault(nu => nu.Name == name && nu.Version == version);
+                if (nugetRef == null)
                 {
-                    RefFrom = this
-                };
-                nugetRef.LoadReferences(framework);
+                    nugetRef = new NugetPackage(name, version) { RefFrom = this };
+                    nugetRef.LoadReferences(checker, framework);
+                    //checker.NugetPackages.Add(nugetRef);
+                }
                 References.Add(nugetRef);
             }
         }

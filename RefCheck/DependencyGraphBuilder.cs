@@ -14,10 +14,10 @@ public class DependencyGraphBuilder
     private readonly StreamWriter _graph;
     private readonly List<NugetPackage> _nugetReferences;
 
-    public DependencyGraphBuilder(Solution solution, Profile refSettings, string fileName, bool includeSystemPackages)
+    public DependencyGraphBuilder(ReferenceChecker checker, string fileName, bool includeSystemPackages)
     {
-        _solution = solution;
-        _refSettings = refSettings;
+        _solution = checker.Solutions.First();
+        _refSettings = _solution.RefSettings;
         _includeSystemPackages = includeSystemPackages;
 
         var fileStream = File.Create(fileName);
@@ -35,7 +35,7 @@ public class DependencyGraphBuilder
     
     public void BuildPlantUmlGraph()
     {
-        var name = Path.GetFileNameWithoutExtension(_solution.Name);
+        var name = Path.GetFileNameWithoutExtension(_solution.FileName);
         _graph.WriteLine("@startuml");
         _graph.WriteLine($"title Nuget Packages of Solution {name}");
 

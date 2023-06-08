@@ -13,7 +13,7 @@ namespace RefCheck;
 
 public class Project
 {
-    private readonly Solution _solution;
+    public readonly Solution Solution;
     private bool _isWhitelisted;
     private bool _isBlacklisted;
 
@@ -83,11 +83,11 @@ public class Project
 
     public Project(Solution solution, string projectFileName)
     {
-        _solution = solution;
+        Solution = solution;
         ProjectFileName = projectFileName;
     }
 
-    public string SolutionName => _solution.Name;
+    public string SolutionName => Solution.FileName;
     public string ProjectFileName { get; private set; }
     
     public string ShortName => Path.GetFileNameWithoutExtension(ProjectFileName);
@@ -109,7 +109,7 @@ public class Project
         return false;
     }
 
-    public bool Load()
+    public bool Load(ReferenceChecker checker)
     {
         if (!File.Exists(ProjectFileName))
         {
@@ -146,9 +146,15 @@ public class Project
             var name = reference.Attributes?["Include"]?.Value;
             var version = reference.Attributes?["Version"]?.Value;
             if (name == null || version == null) continue;
-            
-            var nugetRef = new NugetPackage(name, version);
-            nugetRef.LoadReferences(TargetFramework);
+
+
+            var nugetRef = checker.NugetPackages.FirstOrDefault(nu => nu.Name == name && nu.Version == version);
+            if (nugetRef == null)
+            {
+                nugetRef = new NugetPackage(name, version);
+                nugetRef.LoadReferences(checker, TargetFramework);
+                checker.NugetPackages.Add(nugetRef);
+            }
             NugetReferences.Add(nugetRef);
         }
 
@@ -165,9 +171,9 @@ public class Project
 
             var basePath = Path.GetDirectoryName(ProjectFileName) ?? ".";
             var fileName = Path.GetFullPath(name[0].Trim(), basePath);
-            var project = _solution.Projects.FirstOrDefault(p => p.ProjectFileName == fileName)
-                ?? new Project(_solution, fileName);
-            project.Load();
+            var project = Solution.Projects.FirstOrDefault(p => p.ProjectFileName == fileName)
+                ?? new Project(Solution, fileName);
+            project.Load(checker);
             
             if (name.Length > 1)
             {

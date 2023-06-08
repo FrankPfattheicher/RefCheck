@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using IctBaden.Framework.AppUtils;
 using IctBaden.Framework.IniFile;
@@ -20,31 +22,24 @@ public static class Program
         var defaultColor = Console.ForegroundColor;
         var buildGraph = true;
 
-        var fileName = args[0];
-        if (!File.Exists(fileName))
+        if (!args.Any())
         {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine(@"Solution file not found: " + fileName);
-            return (int)AppReturnCode.Fatal;
+            //TODO: Start UI
         }
 
-        var solutionName = Path.GetFileNameWithoutExtension(fileName);
-        var solution = new Solution(solutionName);
-        solution.Load(fileName);
-        Console.WriteLine(@"Solution: " + solution.Name);
-        foreach (var error in solution.Errors)
+        var solutionFileNames = new List<string>();
+        foreach (var arg in args)
         {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine(@"Error: " + error);
+            if (!File.Exists(arg))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(@"Solution file not found: " + arg);
+                return (int)AppReturnCode.Fatal;
+            }
+            solutionFileNames.Add(arg);
         }
 
-        Console.WriteLine($"Checking {solution.Projects.Count} projects");
-
-        var refSettings = new Profile(Path.ChangeExtension(fileName, "references"));
-        Console.WriteLine($"Using settings from {refSettings.FileName}");
-        
-        var checker = new ReferenceChecker(solution, refSettings);
-        Console.WriteLine($"Checking {checker.Projects.Count} references");
+        var checker = new ReferenceChecker();
 
         checker.Processing += projectName =>
         {
@@ -62,13 +57,13 @@ public static class Program
             Console.WriteLine(@"Warning: " + warning);
         };
 
-        checker.Check();
+        checker.CheckSolutions(solutionFileNames);
 
         if (buildGraph)
         {
-            var pumlName = Path.ChangeExtension( solution.Name, "puml");
+            var pumlName = "References.puml";
             Console.WriteLine($"Building dependency graph {pumlName}");
-            var graphBuilder = new DependencyGraphBuilder(solution, refSettings, pumlName, false);
+            var graphBuilder = new DependencyGraphBuilder(checker, pumlName, false);
             graphBuilder.BuildPlantUmlGraph();
         }
         
@@ -76,14 +71,14 @@ public static class Program
         Console.ForegroundColor = defaultColor;
         Console.WriteLine(@"Check done");
 
-        if (solution.Errors.Count > 0)
+        if (checker.Errors.Count > 0)
         {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine(checker.CheckResult);
             return (int)AppReturnCode.Error;
         }
 
-        if (solution.Warnings.Count > 0)
+        if (checker.Warnings.Count > 0)
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine(checker.CheckResult);

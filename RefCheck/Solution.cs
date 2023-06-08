@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using IctBaden.Framework.IniFile;
+
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Local
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 // ReSharper disable UnusedMember.Global
@@ -11,39 +13,41 @@ namespace RefCheck
 {
     public class Solution
     {
+        public string FileName { get; private set; }
         public string Name { get; private set; }
         public string FormatVersion { get; private set; } = string.Empty;
 
+        public Profile RefSettings { get; private set; }
+        
         public List<Project> Projects { get; private set; }
 
         public bool IsLoaded => Projects.Count > 0;
 
-        public string DisplayText => IsLoaded ? $"{Name} ({Projects.Count} Projects)" : Name;
+        public string DisplayText => IsLoaded ? $"{FileName} ({Projects.Count} Projects)" : FileName;
 
         public List<string> Errors { get; set; }
         public List<string> Warnings { get; set; }
 
-        public Solution(string name)
+        public Solution(string fileName)
         {
-            Name = name;
+            FileName = fileName;
+            Name = Path.GetFileNameWithoutExtension(fileName);
             Projects = new List<Project>();
             Errors = new List<string>();
             Warnings = new List<string>();
+            RefSettings = new Profile(Path.ChangeExtension(fileName, "references"));
         }
 
-        public bool Load(string fileName)
+        public bool Load(ReferenceChecker checker)
         {
             // Microsoft Visual Studio Solution File, Format Version 12.00
             // # Visual Studio Version 16
-
-            Name = fileName;
-
-            if (!File.Exists(fileName))
+            if (!File.Exists(FileName))
             {
                 return false;
             }
 
-            var lines = File.ReadAllLines(fileName);
+            var lines = File.ReadAllLines(FileName);
 
             var format = lines.FirstOrDefault(line => line.StartsWith("Microsoft Visual Studio Solution File"));
             if (format != null)
@@ -51,7 +55,7 @@ namespace RefCheck
                 FormatVersion = format.Split(',')[1].Trim();
             }
 
-            var path = Path.GetDirectoryName(fileName) ?? ".";
+            var path = Path.GetDirectoryName(FileName) ?? ".";
 
             var projectFiles = lines
                 .Where(line => line.StartsWith("Project("))
@@ -71,7 +75,7 @@ namespace RefCheck
                 }
                 
                 var project = new Project(this, projectFile);
-                if (project.Load())
+                if (project.Load(checker))
                 {
                     Projects.Add(project);
                 }
