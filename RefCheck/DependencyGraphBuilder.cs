@@ -36,7 +36,7 @@ public class DependencyGraphBuilder
         var projects = _checker.Solutions.SelectMany(s => s.Projects).ToList();
         foreach (var project in projects)
         {
-            graphLines.Add($"rectangle \"{project.ShortName}\" as {project.RefId} #8080FF");
+            graphLines.Add($"rectangle \"Projekt\\n{project.ShortName}\" as {project.RefId} #8080FF");
             graphLines.Add($"{project.Solution.RefId} -- {project.RefId}");
         }
         foreach (var project in projects)
@@ -52,6 +52,8 @@ public class DependencyGraphBuilder
             .OrderBy(nu => nu.Name)
             .ToArray();
         
+        var addedReferences = new List<string>();
+
         foreach (var solution in _checker.Solutions)
         {
             var refSettings = solution.RefSettings;
@@ -75,30 +77,40 @@ public class DependencyGraphBuilder
                     .Where(p => p.NugetReferences.Any(n => n.RefId == nugetReference.RefId));
                 foreach (var project in solutionProjects)
                 {
-                    graphLines.Add(project.IsImplicitNugetReference(nugetReference)
-                        ? $"{project.RefId} =[#red]= {nugetReference.RefId} : redundant\\nreference"
-                        : $"{project.RefId} -- {nugetReference.RefId}");
+                    var newRef = $"{project.RefId} -- {nugetReference.RefId}";
+                    if (addedReferences.All(r => r != newRef))
+                    {
+                        graphLines.Add(project.IsImplicitNugetReference(nugetReference)
+                            ? $"{project.RefId} =[#red]= {nugetReference.RefId} : redundant\\nreference"
+                            : $"{project.RefId} -- {nugetReference.RefId}");
+                        addedReferences.Add(newRef);
+                    }
                 }
             }
-        
+
             // ====== nuget references to other nuget packages ======
             var innerReferences = nugetReferences
                 .SelectMany(nu => nu.References)
                 .Where(nu => _includeSystemPackages || !nu.IsSystemPackage)
                 .DistinctBy(nu => nu.RefId)
                 .ToList();
+
+            
             foreach (var innerReference in innerReferences)
             {
                 if(innerReference.RefFrom == null) continue;
-            
-                var groupName = innerReference.Name.Split('.').First();
-                var color = refSettings["Color"].Get<string>(groupName) ?? innerReference.Color;
-            
-                graphLines.Add($"\"{innerReference.RefFrom.RefId}\" -- {innerReference.RefId}");
+
+                var newRef = $"{innerReference.RefFrom.RefId} -- {innerReference.RefId}";
+                if (addedReferences.All(r => r != newRef))
+                {
+                    graphLines.Add($"\"{innerReference.RefFrom.RefId}\" -- {innerReference.RefId}");
+                    addedReferences.Add(newRef);
+                }
+
             }
         }
         
-        foreach (var line in graphLines.Distinct())
+        foreach (var line in graphLines)
         {
             _graph.WriteLine(line);    
         }

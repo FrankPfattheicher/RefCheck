@@ -151,7 +151,7 @@ public class Project
             var nugetRef = checker.NugetPackages.FirstOrDefault(nu => nu.Name == name && nu.Version == version);
             if (nugetRef == null)
             {
-                nugetRef = new NugetPackage(name, version);
+                nugetRef = new NugetPackage(name, version, 1);
                 nugetRef.LoadReferences(checker, TargetFramework);
                 checker.NugetPackages.Add(nugetRef);
             }

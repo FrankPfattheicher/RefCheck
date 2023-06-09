@@ -11,6 +11,7 @@ namespace RefCheck;
 
 public class NugetPackage
 {
+    private readonly int _depth;
     public string Name { get; }
     public string Version { get; }
 
@@ -89,8 +90,9 @@ public class NugetPackage
     public NugetPackage? RefFrom { get; init; }
 
 
-    public NugetPackage(string name, string version)
+    public NugetPackage(string name, string version, int depth)
     {
+        _depth = depth;
         Name = name;
         Version = version
             .Replace("[", "")
@@ -103,7 +105,7 @@ public class NugetPackage
 
     public void LoadReferences(ReferenceChecker checker, string framework)
     {
-        Console.WriteLine($"Loading Nuget references of {Name}");
+        checker.Processing($"Loading Nuget references of {Name}");
 
         var path = Path.GetFullPath($@"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}\.nuget\packages\{Name}\{Version}");
         var nuspec = Path.Combine(path, $"{Name}.nuspec");
@@ -119,6 +121,12 @@ public class NugetPackage
         var references = xml
             .SelectNodes("//*[local-name()='package']/*[local-name()='metadata']/*[local-name()='dependencies']/*[local-name()='group']")
             ?.GetEnumerator();
+
+        var depth = checker.Settings["Check"].Get("Depth", 2);
+        var ignore = checker.Settings["Check"]
+            .Get("Ignore", string.Empty)
+            ?.Split(",", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            ?? Array.Empty<string>();
 
         while (references != null && references.MoveNext())
         {
@@ -139,11 +147,22 @@ public class NugetPackage
                 
                 if(name.StartsWith("System.", StringComparison.InvariantCultureIgnoreCase)) continue;
                 if(name.StartsWith("Microsoft.NETCore.", StringComparison.InvariantCultureIgnoreCase)) continue;
-            
+
+                if (_depth > depth)
+                {
+                    checker.Processing($"Ignore Nuget {name} - max depth");
+                    continue;
+                }
+                if (ignore.Any(i => name.StartsWith(i)))
+                {
+                    checker.Processing($"Ignore Nuget {name} - config");
+                    continue;
+                }
+                
                 var nugetRef = checker.NugetPackages.FirstOrDefault(nu => nu.Name == name && nu.Version == version);
                 if (nugetRef == null)
                 {
-                    nugetRef = new NugetPackage(name, version) { RefFrom = this };
+                    nugetRef = new NugetPackage(name, version, _depth + 1) { RefFrom = this };
                     nugetRef.LoadReferences(checker, framework);
                     checker.NugetPackages.Add(nugetRef);
                 }

@@ -14,4 +14,11 @@
       <PackageReference Include="IctBaden.Framework" Version="2.1.1" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Remove="RefCheck.cfg" />
+      <Content Include="RefCheck.cfg">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
+    </ItemGroup>
+
 </Project>

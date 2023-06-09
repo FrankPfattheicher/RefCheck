@@ -5,7 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4642a6d6-4e83-472f-a2a3-1bf68530ff6c" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/RefCheck/IRenderer.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/RefCheck/RefCheck.cfg" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RefCheck/DependencyGraphBuilder.cs" beforeDir="false" afterPath="$PROJECT_DIR$/RefCheck/DependencyGraphBuilder.cs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -45,7 +48,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1686216470216</updated>
-      <workItem from="1686216472870" duration="4360000" />
+      <workItem from="1686216472870" duration="10147000" />
     </task>
     <servers />
   </component>

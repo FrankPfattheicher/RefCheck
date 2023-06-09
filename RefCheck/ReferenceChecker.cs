@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using IctBaden.Framework.IniFile;
 using Microsoft.Win32;
 
 namespace RefCheck;
@@ -16,17 +17,22 @@ public class ReferenceChecker
     public readonly List<Project> Projects = new();
     public readonly List<NugetPackage> NugetPackages = new();
 
-    public event Action<string>? Processing;
-    public event Action<string>? Error;
-    public event Action<string>? Warning;
+    public event Action<string>? OnProcessing;
+    public event Action<string>? OnError;
+    public event Action<string>? OnWarning;
 
 
     public List<string> Errors { get; set; } = new();
     public List<string> Warnings { get; set; } = new();
 
+    public Profile Settings;
 
+    public void Processing(string message) => OnProcessing?.Invoke(message);
+    
     public ReferenceChecker()
     {
+        Settings = new Profile("RefCheck.cfg");
+        
         if (Environment.OSVersion.Platform == PlatformID.Win32NT)
         {
 #pragma warning disable CA1416
@@ -84,7 +90,7 @@ public class ReferenceChecker
             Console.WriteLine(@"Solution: " + solution.FileName);
             foreach (var error in Errors)
             {
-                Error?.Invoke(error);
+                OnError?.Invoke(error);
             }
             Solutions.Add(solution);
 
@@ -96,9 +102,9 @@ public class ReferenceChecker
 
     private void CheckSolution(Solution solution)
     {
-        Processing?.Invoke($"Using settings from {solution.RefSettings.FileName}");
+        OnProcessing?.Invoke($"Using settings from {solution.RefSettings.FileName}");
 
-        Processing?.Invoke($"Checking {solution.Projects.Count} projects");
+        OnProcessing?.Invoke($"Checking {solution.Projects.Count} projects");
 
         foreach (var project in solution.Projects)
         {
@@ -121,13 +127,13 @@ public class ReferenceChecker
 
     private void CheckProject(Project project)
     {
-        Processing?.Invoke($"Checking {project.ShortName} {project.ProjectReferences.Count} project references");
+        OnProcessing?.Invoke($"Checking {project.ShortName} {project.ProjectReferences.Count} project references");
         foreach (var reference in project.ProjectReferences)
         {
             CheckProjectReference(reference);
         }
 
-        Processing?.Invoke($"Checking {project.ShortName} {project.NugetReferences.Count} Nuget references");
+        OnProcessing?.Invoke($"Checking {project.ShortName} {project.NugetReferences.Count} Nuget references");
         foreach (var nugetReference in project.NugetReferences)
         {
             CheckNugetReference(project, nugetReference);
@@ -162,7 +168,7 @@ public class ReferenceChecker
 
     private void CheckNugetReference(Project project, NugetPackage nugetPackage)
     {
-        Processing?.Invoke($"[NUGET] {nugetPackage.Name} {nugetPackage.Version}");
+        OnProcessing?.Invoke($"[NUGET] {nugetPackage.Name} {nugetPackage.Version}");
 
         nugetPackage.IsWhitelisted = project.Solution.RefSettings["Whitelisted"].Get(nugetPackage.IniKey, false);
         nugetPackage.IsBlacklisted = project.Solution.RefSettings["Blacklisted"].Get(nugetPackage.IniKey, false);
@@ -190,7 +196,7 @@ public class ReferenceChecker
 
     private void CheckForMixedProjectReferences(Solution solution)
     {
-        Processing?.Invoke("Check for mixed project references..");
+        OnProcessing?.Invoke("Check for mixed project references..");
 
         var refGroups = Projects.GroupBy(r => r.RefId)
             .Select(g => g.AsQueryable().ToList())
@@ -213,7 +219,7 @@ public class ReferenceChecker
             if (!Warnings.Contains(warning))
             {
                 Warnings.Add(warning);
-                Warning?.Invoke(warning);
+                OnWarning?.Invoke(warning);
             }
         }
 
@@ -230,7 +236,7 @@ public class ReferenceChecker
 
     private void CheckForBlacklistedProjects(Solution solution)
     {
-        Processing?.Invoke("Check for blacklisted Project references..");
+        OnProcessing?.Invoke("Check for blacklisted Project references..");
 
         foreach (var reference in Projects.Where(r => !r.IsWhitelisted))
         {
@@ -240,7 +246,7 @@ public class ReferenceChecker
                 if (!Errors.Contains(error))
                 {
                     Errors.Add(error);
-                    Error?.Invoke(error);
+                    OnError?.Invoke(error);
                 }
             }
         }
@@ -248,7 +254,7 @@ public class ReferenceChecker
 
     private void CheckForMixedNugetReferences(Solution solution)
     {
-        Processing?.Invoke("Check for mixed Nuget references..");
+        OnProcessing?.Invoke("Check for mixed Nuget references..");
 
         var refGroups = NugetPackages.GroupBy(r => r.Name)
             .Select(g => g.AsQueryable().ToList())
@@ -271,7 +277,7 @@ public class ReferenceChecker
             if (!Warnings.Contains(warning))
             {
                 Warnings.Add(warning);
-                Warning?.Invoke(warning);
+                OnWarning?.Invoke(warning);
             }
         }
 
@@ -288,7 +294,7 @@ public class ReferenceChecker
 
     private void CheckForBlacklistedNugetReferences(Solution solution)
     {
-        Processing?.Invoke("Check for blacklisted Nuget references..");
+        OnProcessing?.Invoke("Check for blacklisted Nuget references..");
 
         foreach (var reference in NugetPackages.Where(r => !r.IsWhitelisted))
         {
@@ -298,7 +304,7 @@ public class ReferenceChecker
                 if (!Errors.Contains(error))
                 {
                     Errors.Add(error);
-                    Error?.Invoke(error);
+                    OnError?.Invoke(error);
                 }
             }
         }
@@ -306,7 +312,7 @@ public class ReferenceChecker
 
     private void CheckForImplicitNugetReferences(Solution solution)
     {
-        Processing?.Invoke("Check for implicit Nuget references..");
+        OnProcessing?.Invoke("Check for implicit Nuget references..");
 
         foreach (var nugetReference in NugetPackages)
         {
@@ -321,7 +327,7 @@ public class ReferenceChecker
                     if (!Warnings.Contains(warning))
                     {
                         Warnings.Add(warning);
-                        Warning?.Invoke(warning);
+                        OnWarning?.Invoke(warning);
                     }
                 }
             }

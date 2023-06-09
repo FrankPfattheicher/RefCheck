@@ -41,17 +41,17 @@ public static class Program
 
         var checker = new ReferenceChecker();
 
-        checker.Processing += projectName =>
+        checker.OnProcessing += projectName =>
         {
             Console.ForegroundColor = defaultColor;
             Console.WriteLine(projectName);
         };
-        checker.Error += error =>
+        checker.OnError += error =>
         {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine(@"Error: " + error);
         };
-        checker.Warning += warning =>
+        checker.OnWarning += warning =>
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine(@"Warning: " + warning);
