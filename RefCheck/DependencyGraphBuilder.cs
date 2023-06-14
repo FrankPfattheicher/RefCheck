@@ -20,7 +20,7 @@ public class DependencyGraphBuilder
         _graph = new StreamWriter(fileStream);
     }
 
-    
+
     public void BuildPlantUmlGraph()
     {
         _graph.WriteLine("@startuml");
@@ -31,7 +31,7 @@ public class DependencyGraphBuilder
         {
             graphLines.Add($"rectangle \"Solution\\n{solution.Name}\" as {solution.RefId} #FF8080");
         }
-        
+
         // ====== projects ======
         var projects = _checker.Solutions.SelectMany(s => s.Projects).ToList();
         foreach (var project in projects)
@@ -39,25 +39,28 @@ public class DependencyGraphBuilder
             graphLines.Add($"rectangle \"Projekt\\n{project.ShortName}\" as {project.RefId} #8080FF");
             graphLines.Add($"{project.Solution.RefId} -- {project.RefId}");
         }
-        foreach (var project in projects)
+
+        var projectReferences = projects.SelectMany(p => p.ProjectReferences)
+            .DistinctBy(p => (p.RefFrom?.RefId ?? "") + p.RefId)
+            .ToArray();
+
+        foreach (var project in projectReferences)
         {
-            foreach (var projectReference in project.ProjectReferences)
-            {
-                graphLines.Add($"{project.RefId} -- {projectReference.RefId}");
-            }
+            if(project.RefFrom == null) continue;
+            graphLines.Add($"{project.RefFrom.RefId} -- {project.RefId}");
         }
-        
+
         // ====== project nuget references ======
         var nugetReferences = _checker.NugetPackages
-            .OrderBy(nu => nu.Name)
+            .DistinctBy(nu => (nu.RefFrom?.RefId ?? "") + nu.RefId)
             .ToArray();
-        
+
         var addedReferences = new List<string>();
 
         foreach (var solution in _checker.Solutions)
         {
             var refSettings = solution.RefSettings;
-            
+
             foreach (var nugetReference in nugetReferences)
             {
                 var groupName = nugetReference.Name.Split('.').First();
@@ -65,13 +68,14 @@ public class DependencyGraphBuilder
 
                 var isMixedNugetVersionReference = nugetReferences
                     .Any(nu => nu.Name == nugetReference.Name && nu.Version != nugetReference.Version);
-                
+
                 if (isMixedNugetVersionReference)
                 {
                     color += ";line:red;line.bold";
                 }
-            
-                graphLines.Add($"component \"{nugetReference.Name}\\n{nugetReference.Version}\" as {nugetReference.RefId} {color}");
+
+                graphLines.Add(
+                    $"component \"{nugetReference.Name}\\n{nugetReference.Version}\" as {nugetReference.RefId} {color}");
 
                 var solutionProjects = solution.Projects
                     .Where(p => p.NugetReferences.Any(n => n.RefId == nugetReference.RefId));
@@ -92,13 +96,12 @@ public class DependencyGraphBuilder
             var innerReferences = nugetReferences
                 .SelectMany(nu => nu.References)
                 .Where(nu => _includeSystemPackages || !nu.IsSystemPackage)
-                .DistinctBy(nu => nu.RefId)
+                .DistinctBy(nu => (nu.RefFrom?.RefId ?? "") + nu.RefId)
                 .ToList();
 
-            
             foreach (var innerReference in innerReferences)
             {
-                if(innerReference.RefFrom == null) continue;
+                if (innerReference.RefFrom == null) continue;
 
                 var newRef = $"{innerReference.RefFrom.RefId} -- {innerReference.RefId}";
                 if (addedReferences.All(r => r != newRef))
@@ -106,14 +109,14 @@ public class DependencyGraphBuilder
                     graphLines.Add($"\"{innerReference.RefFrom.RefId}\" -- {innerReference.RefId}");
                     addedReferences.Add(newRef);
                 }
-
             }
         }
-        
+
         foreach (var line in graphLines)
         {
-            _graph.WriteLine(line);    
+            _graph.WriteLine(line);
         }
+
         _graph.WriteLine("@enduml");
         _graph.Flush();
         _graph.Close();
