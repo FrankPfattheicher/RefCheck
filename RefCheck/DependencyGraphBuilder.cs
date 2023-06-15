@@ -20,7 +20,10 @@ public class DependencyGraphBuilder
         _graph = new StreamWriter(fileStream);
     }
 
-
+    /// <summary>
+    /// Render as PlantUML diagram
+    /// https://plantuml.com/de/deployment-diagram
+    /// </summary>
     public void BuildPlantUmlGraph()
     {
         _graph.WriteLine("@startuml");
@@ -37,7 +40,7 @@ public class DependencyGraphBuilder
         foreach (var project in projects)
         {
             graphLines.Add($"rectangle \"Projekt\\n{project.ShortName}\" as {project.RefId} #8080FF");
-            graphLines.Add($"{project.Solution.RefId} -- {project.RefId}");
+            graphLines.Add($"{project.Solution.RefId} ==> {project.RefId}");
         }
 
         var projectReferences = projects.SelectMany(p => p.ProjectReferences)
@@ -47,7 +50,7 @@ public class DependencyGraphBuilder
         foreach (var project in projectReferences)
         {
             if(project.RefFrom == null) continue;
-            graphLines.Add($"{project.RefFrom.RefId} -- {project.RefId}");
+            graphLines.Add($"{project.RefFrom.RefId} ==> {project.RefId}");
         }
 
         // ====== project nuget references ======

@@ -103,6 +103,17 @@ public class NugetPackage
             .Last();
     }
 
+    public bool IsImplicitNugetReference(NugetPackage nuRef)
+    {
+        foreach (var nugetReference in References)
+        {
+            if (References.Any(n => n.Name == nuRef.Name)) return true;
+            if (nugetReference.IsImplicitNugetReference(nuRef)) return true;
+        }
+        return false;
+    }
+
+    
     public void LoadReferences(ReferenceChecker checker, string framework)
     {
         checker.Processing($"Loading Nuget references of {Name}");

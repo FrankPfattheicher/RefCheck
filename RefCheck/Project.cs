@@ -103,8 +103,11 @@ public class Project
         foreach (var project in ProjectReferences)
         {
             if (project.IsImplicitNugetReference(nuRef)) return true;
-            if (!project.NugetReferences.Any()) return false;
-            if (project.NugetReferences.Any(n => n.RefId == nuRef.RefId)) return true;
+            if (project.NugetReferences.Any(n => n.Name == nuRef.Name)) return true;
+        }
+        foreach (var nugetReference in NugetReferences)
+        {
+            if (nugetReference.IsImplicitNugetReference(nuRef)) return true;
         }
         return false;
     }
