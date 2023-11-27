@@ -14,6 +14,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{68DAA9B4
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RefCheck", "RefCheck\RefCheck.csproj", "{903B9D13-BA45-4552-B379-E7CA06CE06A8}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "result", "result", "{B8663D64-EB8B-4E36-94AD-0A8B90152446}"
+	ProjectSection(SolutionItems) = preProject
+		RefCheck\bin\Debug\net6.0\References.puml = RefCheck\bin\Debug\net6.0\References.puml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

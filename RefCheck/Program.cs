@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using IctBaden.Framework.AppUtils;
-using IctBaden.Framework.IniFile;
 
 [assembly: AssemblyDescription("VisualStudio solution reference checking tool")]
 [assembly:
@@ -18,7 +17,7 @@ public static class Program
 {
     public static int Main(string[] args)
     {
-        Console.WriteLine(@"RefCheck");
+        Console.WriteLine("RefCheck");
         var defaultColor = Console.ForegroundColor;
         var buildGraph = true;
 
@@ -86,7 +85,7 @@ public static class Program
         }
 
         Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine(@"No Errors, no warnings");
+        Console.WriteLine("No Errors, no warnings");
         return (int)AppReturnCode.Ok;
     }
 }
